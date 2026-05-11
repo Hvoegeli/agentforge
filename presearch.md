@@ -32,7 +32,7 @@ _Architecture-defense checkpoint: 2026-05-11 ~PM MST · MVP: Tue 2026-05-12 11:5
   - Cost analysis: 100 runs **measured**; 1K / 10K / 100K **projected** from measured data with stated methodology (PRD explicitly says "not cost-per-token × n").
   - Hourly scheduled run during demo week (Wed–Fri); daily after.
 - **Latency.** Not real-time. Per-attack: 10–60 s typical; hard timeout **120 s single-turn / 300 s multi-turn**. Demo loop fits in 3–5 min recorded video.
-- **Concurrency vs. target.** 1–3 concurrent at most. Target = existing Hetzner Co-Pilot (~3.7 GB RAM, real OOM risk under load). **Rate cap: ~20 attacks/min (1 every 3 s)** — Orchestrator-owned.
+- **Concurrency vs. target.** 1–3 concurrent at most. **MVP-Tue target = local docker Co-Pilot stack** (fast iteration, no live-box risk); **Final-Fri target = the deployed Hetzner Co-Pilot** (~3.7 GB RAM, real OOM risk under load → conservative rate cap). MVP submission also includes 1–2 live runs against Hetzner so the PRD HARD GATE on "tests against a live system" is satisfied. **Rate cap: ~20 attacks/min (1 every 3 s)** — Orchestrator-owned; applies regardless of target.
 - **Cost constraints.** Hard cap: $10–50 for the full Mon–Fri sprint. OpenRouter API key spend cap: $5/day during dev. Per-run: $0.01–0.04. Judge corpus rerun: ~50 × ~$0.01 = ~$0.50; ~5 reruns over the week = ~$2.50.
 
 ### 3. Reliability Requirements
@@ -97,8 +97,9 @@ _Architecture-defense checkpoint: 2026-05-11 ~PM MST · MVP: Tue 2026-05-12 11:5
   - **Invariant-checker library** (deterministic assertions per category, defined in `evals/success_criteria.md`).
 - **Dev environments (tiered):**
   - **Unit tests:** Co-Pilot mocked with Python fixtures (instant, free).
-  - **Integration loop:** Local docker stack of the Co-Pilot via `clinical-copilot/docker/development-easy` (already working from W1/W2 dev).
-  - **Live runs / demo / scheduled CI:** The existing Hetzner-deployed Co-Pilot (per user decision — no separate staging instance for MVP).
+  - **MVP-Tue primary target:** Local docker stack of the Co-Pilot via `clinical-copilot/docker/development-easy` (already working from W1/W2 dev). Fast iteration, no Hetzner-box risk.
+  - **MVP-Tue PRD-gate runs:** 1–2 attack batches against the existing Hetzner Co-Pilot, just enough to satisfy the "live system, not just a mock" HARD GATE and submit the Hetzner URL as the deployed-target.
+  - **Final-Fri primary target:** The existing Hetzner-deployed Co-Pilot (per user decision — no new staging instance). Scheduled hourly attack loop in CI.
 - **Error handling:** Per-run timeouts (120 s single-turn / 300 s multi-turn); OpenRouter fallback chain on model 502s; target `/healthz` ping before each batch with halt-and-surface if target is down.
 
 ### 8. Observability Strategy
@@ -192,7 +193,7 @@ _Architecture-defense checkpoint: 2026-05-11 ~PM MST · MVP: Tue 2026-05-12 11:5
 - **Pin the Co-Pilot git SHA** at MVP-Tuesday for the regression baseline. Record in `THREAT_MODEL.md`.
 - **Fill `evals/thresholds.yaml`** (T tokens / $C cost / S seconds / N iterations / k amplification) from `clinical-copilot/COST_LATENCY_REPORT.md` p95 figures.
 - **Will the user patch ≥ 1 Co-Pilot exploit Wed–Thu?** Affects whether vuln reports have "fix validation results" (PRD requirement). If not, vuln reports note "status: open, fix planned" honestly. User position so far: "perhaps, after I'm happy with AgentForge."
-- **Confirm PRD interpretation on live-target requirement at MVP.** Council reading + PRD Stage-3 HARD GATE: live tests against the deployed target required for both early and final submissions. User has stated the existing Hetzner Co-Pilot satisfies this — no new staging instance. If the user meant "no live attacks at all on Tuesday," the HARD GATE would be missed.
+- ~~Confirm PRD interpretation on live-target requirement at MVP.~~ **Resolved 2026-05-11 PM:** MVP-Tue primary target = local docker Co-Pilot for development velocity; MVP submission includes 1–2 attack batches against the deployed Hetzner Co-Pilot to satisfy the "live system, not just a mock" HARD GATE and to submit a real deployed-target URL. Final-Fri target = the deployed Hetzner Co-Pilot.
 
 ---
 
@@ -205,7 +206,11 @@ _Architecture-defense checkpoint: 2026-05-11 ~PM MST · MVP: Tue 2026-05-12 11:5
 - **Deterministic invariants** for Judge verdicts where possible (per `evals/success_criteria.md`); **LLM-Judge** validated against a ~30–50 case ground-truth corpus for semantic-judgment cases; agreement rate measured and re-measured on every Judge-prompt change. Threshold: ≥0.7 → finding; 0.5–0.7 → human review; <0.5 → lead-only.
 - **SQLite findings DB + JSONL trace log + static HTML dashboard** from CI. Skip hosted observability service this week.
 - **Deployed URL: read-mostly observability dashboard with basic auth.** Attack execution from GitHub Actions, NOT from the URL.
-- **Target: existing Hetzner-deployed Co-Pilot** (user decision — no new staging instance for MVP). Rate cap 20 attacks/min from AgentForge side. Synthetic patients only. Transcripts redacted before storage.
+- **Target:**
+  - **MVP-Tue primary:** Local docker Co-Pilot stack (`clinical-copilot/docker/development-easy`) for development velocity.
+  - **MVP-Tue PRD-gate runs:** 1–2 attack batches against the existing Hetzner Co-Pilot — submit Hetzner URL as the deployed-target.
+  - **Final-Fri:** Existing Hetzner-deployed Co-Pilot, no new staging instance.
+  - Rate cap 20 attacks/min from AgentForge side regardless of target. Synthetic patients only. Transcripts redacted before storage.
 - **Standards spine:** OWASP LLM Top 10 2025 + MITRE ATLAS + NIST AI 600-1; multi-agent threats via OWASP Agentic-AI / Multi-Agentic Threat Modeling Guide. Operationalize known taxonomies; do not invent new ones.
 - **Cost discipline:** $10–50 ceiling for the week. OpenRouter spend cap $5/day. Cost-without-signal kill switch at $0.50/category. **Cost analysis: ~100 runs measured; 1K/10K/100K projected** with stated methodology (per PRD "not cost-per-token × n").
 - **Per-run timeouts:** 120 s single-turn / 300 s multi-turn (hard kill, mark "timeout", move on).
