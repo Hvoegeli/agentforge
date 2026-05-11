@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.python-version.local
+
+# uv
+.uv/
+uv.lock.local
+
+# Environments + secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Test + coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Type checkers + linters
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Project — local runtime state
+data/
+*.sqlite
+*.sqlite-journal
+*.db
+*.db-journal
+logs/
+*.log
+
+# Generated reports (committed via CI artifact path, not from local)
+dashboard-build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node (if promptfoo / dashboard frontend is added)
+node_modules/
+package-lock.json.local
