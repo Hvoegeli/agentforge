@@ -62,4 +62,6 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "RUF"]
-ignore = []
+# E501 (line-too-long) is left to `ruff format`, which wraps code but intentionally
+# does not reflow comments/strings — so long explanatory comments don't error.
+ignore = ["E501"]

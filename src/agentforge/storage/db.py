@@ -321,7 +321,9 @@ class Database:
         return out
 
     def total_cost(self) -> float:
-        row = self._conn.execute("SELECT COALESCE(SUM(cost_usd), 0.0) AS c FROM attack_attempts").fetchone()
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(cost_usd), 0.0) AS c FROM attack_attempts"
+        ).fetchone()
         return float(row["c"])
 
     def regression_cases(self) -> list[AttackCase]:
