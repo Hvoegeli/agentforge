@@ -64,4 +64,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "RUF"]
 # E501 (line-too-long) is left to `ruff format`, which wraps code but intentionally
 # does not reflow comments/strings — so long explanatory comments don't error.
-ignore = ["E501"]
+# RUF001/002/003 (ambiguous unicode in strings/docstrings/comments): this project
+# uses real typographic chars (× → § ⚠ –) in prose intentionally; that check is for
+# homoglyph attacks in identifiers, not for policing documentation.
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
