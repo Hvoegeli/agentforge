@@ -737,8 +737,9 @@
     </div>
     <div>
       Judge measured agreement rate:
-      <!-- TODO: pull from a db/config field once the Judge corpus validation harness
-           has been run. See ARCHITECTURE.md §"Judge validation (the load-bearing artifact)". -->
+      <!-- Computed at render time by agentforge.dashboard._judge_agreement_summary():
+           the labeled corpus (evals/judge_corpus/) replayed through the deterministic
+           checkers. See ARCHITECTURE.md §"Judge validation (the load-bearing artifact)". -->
       <strong>{{ judge_agreement_rate }}</strong>
       &nbsp;·&nbsp; Auth: HTTP basic auth (deploy concern, not render concern)
     </div>

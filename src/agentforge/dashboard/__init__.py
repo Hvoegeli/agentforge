@@ -156,6 +156,36 @@ def _build_trend_series(
     return entries
 
 
+def _judge_agreement_summary() -> str:
+    """One-line "measured agreement rate" string for the dashboard footer.
+
+    Runs the labeled ground-truth corpus (``evals/judge_corpus/``) through the
+    Judge with **only the deterministic checkers** enabled — no LLM calls, no
+    cost, fully reproducible at render time. That covers the regression-floor
+    cases; the LLM-Judge agreement rate (the number a CISO actually asks about)
+    is measured by ``agentforge validate-judge --llm`` and is not run here so
+    that dashboard rendering stays free and offline.
+
+    Never raises: a missing/broken corpus degrades to an explanatory string
+    rather than breaking the whole render.
+    """
+    try:
+        from agentforge.judge import Judge
+        from agentforge.judge.corpus import load_corpus, validate_judge
+
+        corpus = load_corpus()
+        if not corpus:
+            return "no labeled corpus cases found — run `agentforge validate-judge`"
+        report = validate_judge(Judge(enable_llm_judge=False), corpus)
+        return (
+            f"{report.agreement_rate:.1%} on {report.n_total} labeled corpus cases "
+            f"(FP={report.false_positives}, FN={report.false_negatives}; deterministic "
+            f"checkers — run `agentforge validate-judge --llm` for the LLM-Judge rate)"
+        )
+    except Exception as exc:  # pragma: no cover - defensive; corpus issues must not break the render
+        return f"unavailable — corpus validation failed: {exc}"
+
+
 def _projected_costs(avg_cost: float) -> tuple[float, float, float, float]:
     """Return projected total costs at (100, 1K, 10K, 100K) runs.
 
@@ -237,7 +267,7 @@ def render_dashboard(db: Database) -> str:
         proj_10k=proj_10k,
         proj_100k=proj_100k,
         # footer
-        judge_agreement_rate="not yet measured — TODO: wire to corpus validation harness",
+        judge_agreement_rate=_judge_agreement_summary(),
     )
 
 

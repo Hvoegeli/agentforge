@@ -245,11 +245,15 @@ class TestRenderDashboard:
         assert "100K" in html or "100k" in html.lower()
         assert "1K" in html or "1k" in html.lower()
 
-    def test_judge_agreement_placeholder_present(self) -> None:
-        """Footer must carry the judge agreement rate placeholder until the corpus is run."""
+    def test_judge_agreement_rate_measured(self) -> None:
+        """Footer must report the corpus-measured agreement rate, not a placeholder."""
         with Database(":memory:") as db:
             html = render_dashboard(db)
-        assert "not yet measured" in html
+        assert "not yet measured" not in html
+        # The labeled corpus ships in the repo, so the deterministic checkers run
+        # and a real "<n> labeled corpus cases" line is rendered.
+        assert "labeled corpus cases" in html
+        assert "validate-judge --llm" in html
 
     def test_stop_button_comment_present(self) -> None:
         """The HTML should carry a comment explaining the deployed /stop wiring."""
