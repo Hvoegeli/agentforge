@@ -227,6 +227,70 @@ def replay(
         db.close()
 
 
+@app.command(name="regression-suite")
+def regression_suite_cmd(
+    n: int = typer.Option(5, "--n", help="Replays per case (the clear rate is a confidence interval, not a proof)."),
+    db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB."),
+    target_url: str | None = typer.Option(None, "--target-url", help="Override the target base URL."),
+    target_sha: str | None = typer.Option(None, "--target-sha", help="Override the recorded target git SHA (e.g. the post-fix SHA)."),
+) -> None:
+    """Replay every case in the regression suite (in_regression_suite=1) N times against the
+    target and report, per case, whether its invariant still holds. Exits non-zero if any
+    case does not hold across all N replays — usable as a post-fix CI gate."""
+    _setup_logging()
+    from agentforge.regression import replay_case
+
+    db = _open_db(db_path)
+    adapter = _build_adapter(target_url, target_sha)
+    try:
+        cases = db.regression_cases()
+        if not cases:
+            console.print("[yellow]regression suite is empty (no cases with in_regression_suite=1).[/yellow]")
+            raise typer.Exit(code=0)
+        ok = getattr(adapter, "require_healthy", None)
+        if callable(ok):
+            try:
+                ok()
+            except Exception as exc:
+                console.print(f"[red]target not available: {exc}[/red]")
+                raise typer.Exit(code=2) from exc
+        login = getattr(adapter, "ensure_logged_in", None)
+        if callable(login):
+            login()
+
+        t = Table(title=f"Regression suite — {len(cases)} case(s) × {n} replay(s) each")
+        t.add_column("case")
+        t.add_column("invariant")
+        t.add_column("holds?", justify="center")
+        t.add_column("clear", justify="right")
+        for col in ("pass", "fail", "partial", "uncertain", "error"):
+            t.add_column(col, justify="right")
+        n_failing = 0
+        for case in cases:
+            res = replay_case(case, n=n, adapter=adapter)
+            if not res.holds:
+                n_failing += 1
+            t.add_row(
+                f"{case.id[:10]} {case.subcategory[:24]}",
+                case.invariant_id,
+                "[green]✓[/green]" if res.holds else "[red]✗[/red]",
+                f"{res.n_clear}/{res.n}",
+                str(res.n_pass), str(res.n_fail), str(res.n_partial), str(res.n_uncertain), str(res.n_error),
+            )
+        console.print(t)
+        target_label = getattr(adapter, "target_sha", None) or target_sha or "?"
+        if n_failing == 0:
+            console.print(f"[green]regression suite HOLDS across all {len(cases)} case(s) at target {target_label}[/green]")
+        else:
+            console.print(f"[red]{n_failing}/{len(cases)} regression case(s) do NOT hold at target {target_label}[/red]")
+            raise typer.Exit(code=1)
+    finally:
+        close = getattr(adapter, "close", None)
+        if callable(close):
+            close()
+        db.close()
+
+
 @app.command(name="validate-judge")
 def validate_judge_cmd(
     corpus_dir: str | None = typer.Option(None, "--corpus-dir", help="Judge corpus directory (default evals/judge_corpus)."),

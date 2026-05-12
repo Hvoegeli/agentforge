@@ -67,3 +67,17 @@ def test_replay_against_unreachable_target_exits_2(tmp_path: Path) -> None:
     r = runner.invoke(app, ["replay", "--finding", fid, "--n", "2", "--db", str(db), "--target-url", "http://localhost:7300"])
     assert r.exit_code == 2  # target not available
     assert "not available" in r.stdout.lower() or "target" in r.stdout.lower()
+
+
+def test_regression_suite_empty_then_populated(tmp_path: Path) -> None:
+    db = tmp_path / "af.sqlite"
+    # empty DB → empty regression suite → exit 0 with a notice
+    r = runner.invoke(app, ["regression-suite", "--db", str(db)])
+    assert r.exit_code == 0
+    assert "empty" in r.stdout.lower()
+    # seed the 3 known findings (their cases are in_regression_suite=1), then the suite is
+    # non-empty — but the target is unreachable, so it exits 2 before replaying.
+    runner.invoke(app, ["seed-findings", "--db", str(db), "--reports-dir", str(tmp_path / "rep")])
+    r = runner.invoke(app, ["regression-suite", "--db", str(db), "--target-url", "http://localhost:7300"])
+    assert r.exit_code == 2
+    assert "not available" in r.stdout.lower() or "target" in r.stdout.lower()
