@@ -67,6 +67,8 @@ class Campaign:
     max_attacks: int | None = None  # None = run the whole deterministic floor
     surfaces: set[TargetSurface] | None = None
     include_multi_turn: bool = True
+    include_external_attacks: bool = False  # also pull agentforge.attacks.external (curated public-dataset corpus)
+    include_external_engines: bool = False  # + garak/PyRIT/promptfoo wrappers, if installed
     extra_subs: dict[str, str] = field(default_factory=dict)
     judge_context: dict = field(default_factory=dict)  # authorized_patient_ids, system_prompt_fragments, …
     mutate_near_misses: bool = False
@@ -239,6 +241,8 @@ class Orchestrator:
             surfaces=campaign.surfaces,
             include_multi_turn=campaign.include_multi_turn,
             extra_subs=campaign.extra_subs or None,
+            include_external=campaign.include_external_attacks,
+            include_external_engines=campaign.include_external_engines,
         )
         state = initial_state(run.id)
         state["queue"] = planned

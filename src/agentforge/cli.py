@@ -106,6 +106,7 @@ def run(
     budget: float = typer.Option(0.50, "--budget", help="Agent-side LLM cost ceiling for the run (USD)."),
     single_turn_only: bool = typer.Option(False, "--single-turn-only", help="Skip multi-turn seeds."),
     mutate: bool = typer.Option(False, "--mutate", help="Mutate near-misses (deterministic mutators)."),
+    external: bool = typer.Option(False, "--external", help="Also run the curated public-dataset attack corpus (attacks/external.py)."),
     db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB (default from settings)."),
     reports_dir: str = typer.Option("findings", "--reports-dir", help="Where vuln reports are written."),
     target_url: str | None = typer.Option(None, "--target-url", help="Override the target base URL for this run."),
@@ -126,6 +127,7 @@ def run(
             max_attacks=max_attacks,
             include_multi_turn=not single_turn_only,
             mutate_near_misses=mutate,
+            include_external_attacks=external,
             reports_dir=reports_dir,
         )
         console.print(f"[bold]Campaign:[/bold] {campaign.directive}")

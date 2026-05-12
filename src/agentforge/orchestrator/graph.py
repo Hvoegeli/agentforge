@@ -127,6 +127,8 @@ def build_graph(deps: GraphDeps):  # -> CompiledStateGraph
             surfaces=campaign.surfaces,
             include_multi_turn=campaign.include_multi_turn,
             extra_subs=campaign.extra_subs or None,
+            include_external=campaign.include_external_attacks,
+            include_external_engines=campaign.include_external_engines,
         )
         logger.info(
             "orchestrator: campaign %r — planned %d attack cases for %s",
