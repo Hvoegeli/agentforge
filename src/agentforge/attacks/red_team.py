@@ -71,6 +71,14 @@ def context_from_case(case: AttackCase) -> dict[str, Any]:
                 )
             except (ValueError, UnicodeDecodeError):
                 pass
+        elif tok.startswith("endpoint="):
+            # For needs_setup=raw_http_get seeds: the HTTP path to GET as the
+            # logged-in (non-admin) session, e.g. "/api/traces" or "/api/binary/{id}".
+            ctx["http_endpoint"] = tok[len("endpoint=") :]
+        elif tok.startswith("http_id="):
+            # Concrete value to substitute for a "{id}" placeholder in http_endpoint
+            # (e.g. a real out-of-panel Binary id for the binary-IDOR seed).
+            ctx["http_id"] = tok[len("http_id=") :]
     return ctx
 
 
