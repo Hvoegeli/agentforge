@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -274,12 +275,17 @@ def regression_suite_cmd(
     db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB."),
     target_url: str | None = typer.Option(None, "--target-url", help="Override the target base URL."),
     target_sha: str | None = typer.Option(None, "--target-sha", help="Override the recorded target git SHA (e.g. the post-fix SHA)."),
+    out: str | None = typer.Option(None, "--out", help="Write the suite report (JSON) here, e.g. evals/results/regression-<sha>.json — the committable post-fix artifact."),
+    update_status: bool = typer.Option(False, "--update-status", help="Persist finding-status transitions: a case that now holds → its finding `resolved`; a previously-resolved case that now fails → `regression`."),
 ) -> None:
     """Replay every case in the regression suite (in_regression_suite=1) N times against the
     target and report, per case, whether its invariant still holds. Exits non-zero if any
-    case does not hold across all N replays — usable as a post-fix CI gate."""
+    case does not hold across all N replays — usable as a post-fix CI gate.
+
+    With ``--out`` writes the committable "found → reported → fixed → regression-verified"
+    artifact; with ``--update-status`` flips the linked findings to ``resolved`` / ``regression``."""
     _setup_logging()
-    from agentforge.regression import replay_case
+    from agentforge.regression import run_regression_suite
 
     db = _open_db(db_path)
     adapter = _build_adapter(target_url, target_sha)
@@ -290,31 +296,46 @@ def regression_suite_cmd(
             raise typer.Exit(code=0)
         _require_target_ready(adapter)
 
-        t = Table(title=f"Regression suite — {len(cases)} case(s) × {n} replay(s) each")
+        report = run_regression_suite(cases, adapter=adapter, n=n, db=db, update_status=update_status)
+
+        t = Table(title=f"Regression suite — {len(cases)} case(s) × {n} replay(s) each @ {report['target_sha']}")
         t.add_column("case")
         t.add_column("invariant")
         t.add_column("holds?", justify="center")
         t.add_column("clear", justify="right")
         for col in ("pass", "fail", "partial", "uncertain", "error"):
             t.add_column(col, justify="right")
-        n_failing = 0
-        for case in cases:
-            res = replay_case(case, n=n, adapter=adapter)
-            if not res.holds:
-                n_failing += 1
+        t.add_column("finding →", justify="left")
+        for c in report["cases"]:
+            transitions = ", ".join(
+                f"{f['previous_status']}→{f['new_status']}" + ("" if f["applied"] else " (dry)")
+                for f in c["linked_findings"] if f["changed"]
+            ) or ("—" if not c["linked_findings"] else "no change")
             t.add_row(
-                f"{case.id[:10]} {case.subcategory[:24]}",
-                case.invariant_id,
-                "[green]✓[/green]" if res.holds else "[red]✗[/red]",
-                f"{res.n_clear}/{res.n}",
-                str(res.n_pass), str(res.n_fail), str(res.n_partial), str(res.n_uncertain), str(res.n_error),
+                f"{c['case_id'][:10]} {c['subcategory'][:24]}",
+                c["invariant_id"],
+                "[green]✓[/green]" if c["holds"] else "[red]✗[/red]",
+                f"{c['n_clear']}/{c['n']}",
+                str(c["counts"]["pass"]), str(c["counts"]["fail"]), str(c["counts"]["partial"]),
+                str(c["counts"]["uncertain"]), str(c["counts"]["error"]),
+                transitions,
             )
         console.print(t)
-        target_label = getattr(adapter, "target_sha", None) or target_sha or "?"
+
+        if out:
+            out_path = Path(out)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            console.print(f"[green]wrote regression artifact → {out_path}[/green]")
+
+        n_failing = report["summary"]["n_failing"]
+        n_reg = report["summary"]["n_regressions_detected"]
+        if n_reg:
+            console.print(f"[red]⚠ {n_reg} previously-resolved finding(s) reappeared (status → regression).[/red]")
         if n_failing == 0:
-            console.print(f"[green]regression suite HOLDS across all {len(cases)} case(s) at target {target_label}[/green]")
+            console.print(f"[green]regression suite HOLDS across all {len(cases)} case(s) at target {report['target_sha']}[/green]")
         else:
-            console.print(f"[red]{n_failing}/{len(cases)} regression case(s) do NOT hold at target {target_label}[/red]")
+            console.print(f"[red]{n_failing}/{len(cases)} regression case(s) do NOT hold at target {report['target_sha']}[/red]")
             raise typer.Exit(code=1)
     finally:
         close = getattr(adapter, "close", None)

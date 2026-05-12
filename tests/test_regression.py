@@ -99,3 +99,83 @@ def test_replay_finding_missing_raises() -> None:
     with pytest.raises(KeyError):
         replay_finding("nope", db=db, adapter=_Adapter(echo=False), n=1)
     db.close()
+
+
+# --------------------------------------------------------------------------- #
+# run_regression_suite — suite report + finding-status transitions
+# --------------------------------------------------------------------------- #
+def _db_with_case_and_finding(*, status):
+    """A :memory: DB carrying _c1_case() with an OPEN/RESOLVED finding hanging off it."""
+    from agentforge.documentation import new_finding
+    from agentforge.models import CheckType, JudgeVerdict, ObservedBehavior
+
+    db = Database(":memory:")
+    case = _c1_case()
+    attempt = AttackAttempt(
+        attack_case_id=case.id, target_sha="s", target_base_url="http://localhost:7300",
+        request_summary="x", response_redacted=f"OK {_CANARY}",
+    )
+    verdict = JudgeVerdict(
+        attack_attempt_id=attempt.id, check_type=CheckType.DETERMINISTIC,
+        observed_behavior=ObservedBehavior.FAIL, invariant_passed=False, rationale="canary echoed",
+    )
+    db.insert(case)
+    db.insert(attempt)
+    db.insert(verdict)
+    finding = new_finding(case, attempt, verdict, status=status)
+    db.insert(finding)
+    return db, case, finding
+
+
+def test_run_regression_suite_resolves_finding_when_invariant_now_holds() -> None:
+    from agentforge.models import FindingStatus
+    from agentforge.regression import run_regression_suite
+
+    db, case, finding = _db_with_case_and_finding(status=FindingStatus.OPEN)
+    report = run_regression_suite([case], adapter=_Adapter(echo=False), n=3, db=db, update_status=True)
+
+    assert report["summary"] == {
+        "n_cases": 1, "n_holding": 1, "n_failing": 0, "n_regressions_detected": 0, "status_updates_written": True,
+    }
+    c = report["cases"][0]
+    assert c["holds"] is True and c["n_clear"] == 3
+    lf = c["linked_findings"][0]
+    assert lf["previous_status"] == "open" and lf["new_status"] == "resolved" and lf["applied"] is True
+    assert db.get_finding(finding.id).status is FindingStatus.RESOLVED
+    db.close()
+
+
+def test_run_regression_suite_flags_regression_when_resolved_hole_reappears() -> None:
+    from agentforge.models import FindingStatus
+    from agentforge.regression import run_regression_suite
+
+    db, case, finding = _db_with_case_and_finding(status=FindingStatus.RESOLVED)
+    report = run_regression_suite([case], adapter=_Adapter(echo=True), n=4, db=db, update_status=True)
+
+    assert report["summary"]["n_regressions_detected"] == 1
+    assert report["summary"]["n_failing"] == 1
+    lf = report["cases"][0]["linked_findings"][0]
+    assert lf["previous_status"] == "resolved" and lf["new_status"] == "regression"
+    assert db.get_finding(finding.id).status is FindingStatus.REGRESSION
+    db.close()
+
+
+def test_run_regression_suite_dry_run_does_not_write_status() -> None:
+    from agentforge.models import FindingStatus
+    from agentforge.regression import run_regression_suite
+
+    db, case, finding = _db_with_case_and_finding(status=FindingStatus.OPEN)
+    report = run_regression_suite([case], adapter=_Adapter(echo=False), n=2, db=db, update_status=False)
+
+    lf = report["cases"][0]["linked_findings"][0]
+    assert lf["changed"] is True and lf["applied"] is False  # would resolve, but not written
+    assert db.get_finding(finding.id).status is FindingStatus.OPEN
+    db.close()
+
+
+def test_run_regression_suite_without_db_skips_findings() -> None:
+    from agentforge.regression import run_regression_suite
+
+    report = run_regression_suite([_c1_case()], adapter=_Adapter(echo=False), n=2, db=None)
+    assert report["cases"][0]["linked_findings"] == []
+    assert report["summary"]["n_regressions_detected"] == 0

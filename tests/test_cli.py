@@ -30,7 +30,8 @@ def test_seed_findings_then_status_then_dashboard(tmp_path: Path) -> None:
     assert r.exit_code == 0, r.output
     assert "seeded finding" in r.stdout
     assert db.exists()
-    assert len(list(reports.glob("*.md"))) == 4  # 4 HIGH filed; 2 CRITICAL go to reports/drafts/
+    assert len(list(reports.glob("*.md"))) == 6  # all 6 filed (the 2 CRITICALs are human_approved in the seed set)
+    assert not (reports / "drafts").exists() or not list((reports / "drafts").glob("*.md"))
 
     r = runner.invoke(app, ["status", "--db", str(db)])
     assert r.exit_code == 0

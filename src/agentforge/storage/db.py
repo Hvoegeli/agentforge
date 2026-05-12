@@ -417,6 +417,18 @@ class Database:
         ).fetchall()
         return [self._finding_from_row(r) for r in rows]
 
+    def findings_for_case(self, case_id: str) -> list[Finding]:
+        """Every Finding whose attack case is *case_id* (newest first).
+
+        The regression suite uses this to walk from a replayed case to the
+        finding(s) it produced so it can flip them to ``resolved`` (the invariant
+        now holds at the new SHA) or ``regression`` (a previously-resolved hole
+        reappeared)."""
+        rows = self._conn.execute(
+            "SELECT * FROM findings WHERE attack_case_id = ? ORDER BY created_at DESC", (case_id,)
+        ).fetchall()
+        return [self._finding_from_row(r) for r in rows]
+
     def mark_in_regression(self, case_id: str, *, in_suite: bool = True) -> None:
         with self._tx() as conn:
             conn.execute(

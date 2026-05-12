@@ -62,25 +62,38 @@ def test_seed_known_findings_persists_and_reports(tmp_path: Path) -> None:
         assert rates[cat].get("fail", 0) == 1, (cat, rates[cat])
     assert rates["data_exfiltration"].get("fail", 0) == 3, rates["data_exfiltration"]
 
-    # 2 CRITICAL (C1 doc-image, C2 binary-IDOR) held as drafts; 4 HIGH (the two new
-    # C2 findings, B1 zero-citation, C5 no-token-cap) filed.
+    # 2 CRITICAL (C1 doc-image, C2 binary-IDOR) + 4 HIGH (the two new C2 findings,
+    # B1 zero-citation, C5 no-token-cap) — all open.
     open_sev = db.open_findings_by_severity()
     assert sum(open_sev.values()) == 6
     assert open_sev.get(Severity.CRITICAL.value, 0) == 2
     assert open_sev.get(Severity.HIGH.value, 0) == 4
 
+    # The 2 CRITICALs were reviewed & signed off (human_approved=True in the seed
+    # set), so all 6 reports are filed and reports/drafts/ is empty.
     filed = list(tmp_path.glob("*.md"))
     drafts = list((tmp_path / "drafts").glob("*.md")) if (tmp_path / "drafts").exists() else []
-    assert len(filed) == 4
-    assert len(drafts) == 2
-    for d in drafts:
-        assert "DRAFT — PENDING HUMAN SIGN-OFF" in d.read_text()
+    assert len(filed) == 6
+    assert len(drafts) == 0
+    for f in filed:
+        assert "DRAFT — PENDING HUMAN SIGN-OFF" not in f.read_text()
 
     # the findings carry their report paths
     for fid, path in written:
         f = db.get_finding(fid)
         assert f is not None and f.report_path == path and Path(path).exists()
     db.close()
+
+
+def test_critical_seeds_are_human_approved_others_not() -> None:
+    """The two CRITICAL seeds were reviewed & signed off; everything else stays gated."""
+    seeds = {s.case.subcategory: s for s in known_seeded_findings()}
+    assert seeds["indirect-via-document-image"].human_approved is True
+    assert seeds["binary-idor-by-id"].human_approved is True
+    for sub, s in seeds.items():
+        if sub not in ("indirect-via-document-image", "binary-idor-by-id"):
+            assert s.human_approved is False, sub
+            assert s.severity is not Severity.CRITICAL, sub  # only CRITICALs need the gate
 
 
 def test_manual_pass_findings_are_provenance_tagged() -> None:

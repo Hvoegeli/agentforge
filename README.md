@@ -54,7 +54,7 @@ agentforge/
 ├── dashboard.html            (rendered observability dashboard — static, self-contained)
 ├── RESILIENCE.md             (generated: per-category pass/fail + open-findings work list for the target's maintainer)
 ├── deploy-dashboard.sh       (regenerate the dashboard + RESILIENCE.md from a live run + scp the dashboard to the box)
-├── reports/                  (the 6 generated vulnerability reports — 4 HIGH filed; 2 CRITICAL held as drafts under reports/drafts/)
+├── reports/                  (the 6 generated vulnerability reports — all filed; the 2 CRITICALs were reviewed & signed off, so reports/drafts/ is empty. A Red-Team-discovered CRITICAL would land in reports/drafts/ until approved.)
 ├── evals/
 │   ├── success_criteria.md   (the invariant table — the Judge's spec)
 │   ├── judge_corpus/         (labeled ground-truth transcripts — the Judge validation set)
@@ -102,8 +102,10 @@ COPILOT_USERNAME=<test-account> COPILOT_PASSWORD=<password> \
 
 uv run agentforge status --db findings.sqlite          # coverage / verdict rates / open findings / recent runs
 uv run agentforge validate-judge                        # corpus-validate the Judge (agreement / FP / FN)
-uv run agentforge replay --finding <id> --n 10 --target-url <url>   # regression-replay a finding's case
-uv run agentforge regression-suite --target-url <url>   # replay every in_regression_suite case (exits non-zero on any fail)
+uv run agentforge replay --finding <id> --n 10 --target-url <url>   # regression-replay one finding's case
+# replay the whole regression suite at the post-fix SHA — the "found → reported → fixed → regression-verified" artifact:
+uv run agentforge regression-suite --db findings.sqlite --target-url <deployed-url> --target-sha copilot@1055abd71 \
+  --out evals/results/regression-1055abd71.json --update-status   # resolves the cases that now hold; flags any regression; exits non-zero if any case fails
 uv run agentforge dashboard --db findings.sqlite --out dashboard.html --resilience-md RESILIENCE.md   # render the observability dashboard (+ the RESILIENCE.md work list)
 uv run agentforge resilience-report --db findings.sqlite --out RESILIENCE.md   # just the hand-off doc
 

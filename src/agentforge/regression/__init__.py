@@ -16,18 +16,32 @@ Two uses:
   passing. AgentForge then promotes the case into the regression suite
   (``mark_in_regression``) so future runs replay it automatically.
 
-This module performs no campaign accounting and writes no reports — it is the
-narrow "does this one invariant hold across N replays" primitive that the
-``agentforge replay`` CLI command and the Orchestrator's regression step build on.
+:func:`replay_case` performs no campaign accounting and writes no files — it is
+the narrow "does this one invariant hold across N replays" primitive.
+:func:`run_regression_suite` builds on it: replay every regression case at the
+current target SHA, look up the finding(s) each case produced, and report (and,
+with ``update_status=True``, apply) the status transition the replay implies —
+``resolved`` when the invariant now holds, ``regression`` when a previously-fixed
+hole reappeared. It returns the result as a serialisable dict; the
+``agentforge regression-suite`` CLI command renders it and (with ``--out``) writes
+it under ``evals/results/`` as the committable post-fix artifact.
 """
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 from agentforge.judge import Judge
-from agentforge.models import AttackAttempt, AttackCase, JudgeVerdict, ObservedBehavior
+from agentforge.models import (
+    AttackAttempt,
+    AttackCase,
+    FindingStatus,
+    JudgeVerdict,
+    ObservedBehavior,
+)
 
 logger = logging.getLogger("agentforge.regression")
 
@@ -154,4 +168,130 @@ def replay_finding(
     return replay_case(case, n=n, adapter=adapter, judge=judge, context=context)
 
 
-__all__ = ["ReplayResult", "replay_case", "replay_finding"]
+# --------------------------------------------------------------------------- #
+# Suite-level replay: many cases, optional finding-status update + JSON artifact
+# --------------------------------------------------------------------------- #
+# These statuses mean "the work list still has this open"; a holding replay
+# closes them. (``lead`` is human-triage, not a confirmed finding — leave it.)
+_OPEN_STATES = (FindingStatus.OPEN, FindingStatus.IN_PROGRESS, FindingStatus.REGRESSION)
+
+
+def _status_after_replay(current: FindingStatus, *, holds: bool) -> FindingStatus | None:
+    """The status a finding should move to after a regression replay — or ``None`` for no change.
+
+    - the invariant now holds across every replay → ``resolved`` (it was open / in-progress /
+      a prior regression);
+    - it does *not* hold but the finding was ``resolved`` → ``regression`` (a fixed hole
+      reappeared — exactly the case the PRD's regression harness must detect);
+    - otherwise the status already reflects reality, so leave it.
+    """
+    if holds and current in _OPEN_STATES:
+        return FindingStatus.RESOLVED
+    if not holds and current is FindingStatus.RESOLVED:
+        return FindingStatus.REGRESSION
+    return None
+
+
+def run_regression_suite(
+    cases: list[AttackCase],
+    *,
+    adapter: object,
+    n: int,
+    db: object | None = None,
+    judge: Judge | None = None,
+    update_status: bool = False,
+) -> dict[str, Any]:
+    """Replay every case in *cases* *n* times and return a serialisable suite report.
+
+    The report is the committable "found → reported → fixed → regression-verified"
+    artifact: per-case hold/clear counts at the current target SHA, plus — for each
+    case's linked findings (looked up in *db* if given) — the status transition the
+    replay implies (``resolved`` when the invariant now holds, ``regression`` when a
+    previously-resolved hole reappeared). Pass ``update_status=True`` to actually
+    write those transitions to *db*.
+
+    *db* must expose ``findings_for_case(case_id) -> list[Finding]`` and
+    ``update_finding_status(finding_id, FindingStatus)`` (the real
+    :class:`~agentforge.storage.db.Database`); pass ``None`` to skip the
+    finding-status side entirely (a pure "does the suite hold at this SHA" run).
+    """
+    judge = judge or Judge(enable_llm_judge=False)
+    target_sha = str(getattr(adapter, "target_sha", None) or "unknown")
+    target_base_url = str(getattr(adapter, "base_url", None) or "unknown")
+
+    case_reports: list[dict[str, Any]] = []
+    n_holding = 0
+    n_regressions_detected = 0
+    for case in cases:
+        res = replay_case(case, n=n, adapter=adapter, judge=judge)
+        if res.holds:
+            n_holding += 1
+
+        finding_reports: list[dict[str, Any]] = []
+        if db is not None:
+            for finding in db.findings_for_case(case.id):  # type: ignore[attr-defined]
+                cur = finding.status if isinstance(finding.status, FindingStatus) else FindingStatus(finding.status)
+                new = _status_after_replay(cur, holds=res.holds)
+                if new is FindingStatus.REGRESSION:
+                    n_regressions_detected += 1
+                if new is not None and update_status:
+                    db.update_finding_status(finding.id, new)  # type: ignore[attr-defined]
+                finding_reports.append(
+                    {
+                        "finding_id": finding.id,
+                        "severity": finding.severity.value if hasattr(finding.severity, "value") else str(finding.severity),
+                        "previous_status": cur.value,
+                        "new_status": (new.value if new is not None else cur.value),
+                        "changed": new is not None,
+                        "applied": new is not None and update_status,
+                    }
+                )
+
+        case_reports.append(
+            {
+                "case_id": case.id,
+                "subcategory": case.subcategory,
+                "category": case.category.value if hasattr(case.category, "value") else str(case.category),
+                "invariant_id": case.invariant_id,
+                "holds": res.holds,
+                "n_clear": res.n_clear,
+                "n": res.n,
+                "clear_rate": round(res.clear_rate, 4),
+                "counts": {
+                    "pass": res.n_pass,
+                    "fail": res.n_fail,
+                    "partial": res.n_partial,
+                    "uncertain": res.n_uncertain,
+                    "error": res.n_error,
+                },
+                "linked_findings": finding_reports,
+            }
+        )
+
+    return {
+        "_about": (
+            "AgentForge regression suite — every in_regression_suite case replayed N times against the "
+            "target. A case 'holds' iff every replay cleared its invariant; that's a confidence interval "
+            "(N, clear rate, target SHA), not a proof. update_status applied: " + str(update_status) + "."
+        ),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
+        "target_sha": target_sha,
+        "target_base_url": target_base_url,
+        "n_replays_per_case": n,
+        "summary": {
+            "n_cases": len(cases),
+            "n_holding": n_holding,
+            "n_failing": len(cases) - n_holding,
+            "n_regressions_detected": n_regressions_detected,
+            "status_updates_written": update_status,
+        },
+        "cases": case_reports,
+    }
+
+
+__all__ = [
+    "ReplayResult",
+    "replay_case",
+    "replay_finding",
+    "run_regression_suite",
+]
