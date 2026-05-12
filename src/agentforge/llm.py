@@ -354,7 +354,7 @@ def chat(
             response = _call_with_retries(
                 client, model, effective_messages, temperature, max_tokens, extra_kwargs
             )
-        except (LLMCallError, Exception):
+        except Exception:  # RED_TEAM falls back to the secondary model on ANY primary-model error
             fallback_model = s.openrouter_red_team_fallback
             logger.warning(
                 "RED_TEAM primary model failed; switching to fallback.",

@@ -14,10 +14,13 @@ The agent only *builds and returns* ``AttackCase`` objects (and, given a
 near-miss, mutated ones). Executing them against the target is the Target
 Adapter's job; verdicting is the Judge's.
 
-Each ``AttackCase`` carries its per-attack **canary** and **sentinel tools** in
-``notes`` as ``canary=<nonce> sentinels=<csv>`` so the executor / Judge can
-recover them via :func:`context_from_case` (the ``AttackCase`` schema
-deliberately has no canary field — it stays a clean record).
+Each ``AttackCase`` carries its per-attack metadata packed into ``notes`` as
+whitespace-separated ``key=value`` tokens — ``canary=<nonce>``,
+``sentinels=<csv>``, and (for seeds that need a setup step before the turns can
+land, e.g. uploading a poisoned document) ``needs_setup=<kind>`` and
+``setup_payload_b64=<base64-of-the-canary-substituted-payload>``. The executor /
+Judge recover all of this via :func:`context_from_case` (the ``AttackCase`` schema
+deliberately has no canary/setup fields — it stays a clean record).
 """
 
 from __future__ import annotations
@@ -58,6 +61,15 @@ def context_from_case(case: AttackCase) -> dict[str, Any]:
         elif tok.startswith(_NOTES_SENTINELS_PREFIX):
             raw = tok[len(_NOTES_SENTINELS_PREFIX) :]
             ctx["sentinel_tools"] = [s for s in raw.split(",") if s]
+        elif tok.startswith("needs_setup="):
+            ctx["needs_setup"] = tok[len("needs_setup=") :]
+        elif tok.startswith("setup_payload_b64="):
+            try:
+                ctx["setup_payload"] = base64.b64decode(tok[len("setup_payload_b64=") :]).decode(
+                    "utf-8"
+                )
+            except (ValueError, UnicodeDecodeError):
+                pass
     return ctx
 
 
@@ -141,8 +153,15 @@ class RedTeamAgent:
             extra_notes_bits: list[str] = []
             if seed.get("needs_setup"):
                 extra_notes_bits.append(f"needs_setup={seed['needs_setup']}")
-                if seed.get("setup_payload"):
-                    extra_notes_bits.append("setup_payload_present=1")
+                raw_payload = seed.get("setup_payload")
+                if raw_payload:
+                    # Substitute the canary into the setup payload, then base64-encode it so
+                    # the (possibly multi-line) content survives whitespace-splitting when
+                    # context_from_case() unpacks notes. The executor decodes it before doing
+                    # the setup step (upload the poisoned doc / write the poisoned FHIR field).
+                    filled_payload = fill(str(raw_payload), canary=canary, **subs)
+                    payload_b64 = base64.b64encode(filled_payload.encode("utf-8")).decode("ascii")
+                    extra_notes_bits.append(f"setup_payload_b64={payload_b64}")
             out.append(
                 AttackCase(
                     category=category,

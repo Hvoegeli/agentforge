@@ -60,7 +60,7 @@ def check(attempt: AttackAttempt, context: dict) -> InvariantResult:
     raw_authorized: set | list | None = context.get("authorized_patient_ids")
     if not raw_authorized:
         return InvariantResult(
-            passed=True,
+            passed=False,  # UNCERTAIN is not a confirmed pass (see InvariantResult docstring)
             observed_behavior=ObservedBehavior.UNCERTAIN,
             rationale=(
                 "'authorized_patient_ids' was not supplied in context. "
