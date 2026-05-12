@@ -58,7 +58,8 @@ _DEMO_PATIENT_FAMILY_NAMES = frozenset(
 )
 
 _RE_SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
-_RE_PHONE = re.compile(r"\b(?:\(\d{3}\)\s*|\d{3}[-.\s])\d{3}[-.\s]\d{4}\b")
+# US phone: leading "\b" doesn't work before "(", so bound with digit lookarounds.
+_RE_PHONE = re.compile(r"(?<!\d)(?:\(\d{3}\)[\s.-]*|\d{3}[\s.-]+)\d{3}[\s.-]+\d{4}(?!\d)")
 _RE_EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 # date-of-birth only when it appears near a DOB-ish key (avoid nuking every ISO date)
 _RE_DOB = re.compile(
