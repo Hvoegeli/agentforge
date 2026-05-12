@@ -271,6 +271,112 @@
     .trend-flat { color: var(--text-muted); font-size: 1.1em; }
 
     /* ------------------------------------------------------------------ */
+    /* KPI strip (top-of-page summary)                                      */
+    /* ------------------------------------------------------------------ */
+    .kpi-row { margin-bottom: 28px; }
+    .kpi-row .stat-box { text-align: left; }
+    .kpi-row .value { color: var(--text); }
+    .kpi-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+
+    /* ------------------------------------------------------------------ */
+    /* §1 category cards                                                    */
+    /* ------------------------------------------------------------------ */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 720px) { .card-grid { grid-template-columns: 1fr; } }
+
+    .cat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cat-card.untested { opacity: 0.72; }
+    .cat-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .cat-card-head .name { font-family: var(--mono); font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .cat-card .desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
+    .cat-card .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 9px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .pill-id      { color: var(--accent); border-color: var(--accent); }
+    .pill-attempts{ color: var(--text); }
+    .pill-roadmap { color: var(--warn); border-color: var(--warn); }
+
+    /* ------------------------------------------------------------------ */
+    /* Collapsible findings detail (§6)                                     */
+    /* ------------------------------------------------------------------ */
+    details.finding {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: var(--surface2);
+    }
+    details.finding > summary {
+      cursor: pointer;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+    details.finding > summary::-webkit-details-marker { display: none; }
+    details.finding > summary::before { content: "▸"; color: var(--text-dim); font-size: 0.8em; }
+    details.finding[open] > summary::before { content: "▾"; }
+    details.finding > summary:hover { background: var(--surface); }
+    details.finding .finding-body {
+      padding: 4px 16px 16px 30px;
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+    details.finding .finding-body dt { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 9px; }
+    details.finding .finding-body dd { margin: 2px 0 0 0; color: var(--text); }
+    details.finding .turn {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 7px 10px;
+      margin-top: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    details.finding .resp {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 7px 10px;
+      margin-top: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .summary-sev { font-weight: 700; }
+    .summary-cat { font-family: var(--mono); color: var(--text-muted); font-size: 0.82rem; }
+
+    /* ------------------------------------------------------------------ */
     /* Footer                                                               */
     /* ------------------------------------------------------------------ */
     .footer {
@@ -304,8 +410,9 @@
     <div class="header-left">
       <h1>AgentForge — Adversarial Eval Dashboard</h1>
       <div class="subtitle">
-        Clinical Co-Pilot red-team observability &nbsp;·&nbsp;
-        Rendered {{ rendered_at }}
+        Continuous red-team observability for the OpenEMR Clinical Co-Pilot &nbsp;·&nbsp;
+        which attack categories are covered, where the target is holding, what's still open.
+        <br />Static snapshot rendered {{ rendered_at }} — regenerate with <code>agentforge dashboard</code>.
       </div>
     </div>
 
@@ -322,37 +429,67 @@
   </header>
 
   <!-- ====================================================================
+       KPI STRIP — at-a-glance summary
+       ==================================================================== -->
+  <div class="stat-row kpi-row">
+    <div class="stat-box">
+      <div class="label">Categories exercised</div>
+      <div class="value">{{ summary.n_categories_exercised }} / {{ summary.n_categories_total }}</div>
+      <div class="kpi-sub">threat categories with ≥1 recorded attempt</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Open findings</div>
+      <div class="value" style="color: var(--danger);">{{ summary.n_open_findings }}</div>
+      <div class="kpi-sub">{{ summary.n_findings_total }} total · see §4 / RESILIENCE.md</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Campaign runs</div>
+      <div class="value">{{ summary.n_runs }}</div>
+      <div class="kpi-sub">Orchestrator-driven, recorded in the DB</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Judge agreement</div>
+      <div class="value" style="color: var(--ok);">{{ summary.judge_agreement_short }}</div>
+      <div class="kpi-sub">on the labeled corpus (deterministic checkers)</div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
        §1  COVERAGE — which categories tested + cases each
        ==================================================================== -->
   <section class="section" id="coverage">
     <h2 class="section-heading"><span class="section-number">1</span>Coverage — Attack Categories</h2>
     <div class="card">
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>ID</th>
-              <th class="num">Attempts</th>
-              <th class="bar-cell">Volume</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% set max_cov = category_coverage.values() | max if category_coverage else 1 %}
-            {% for cat, n in category_coverage.items() %}
-            <tr>
-              <td><code>{{ cat }}</code></td>
-              <td class="muted">{{ category_id_map.get(cat, '') }}</td>
-              <td class="num">{{ n }}</td>
-              <td class="bar-cell">
-                <div class="bar-track">
-                  <div class="bar-fill" style="width: {{ ((n / max_cov) * 100) | round(1) if max_cov > 0 else 0 }}%;"></div>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
+        The nine threat categories from <code>THREAT_MODEL.md</code> (PRD IDs C1–C6 + B1–B3). Each card
+        shows what the category probes, how many attempts have been recorded, and the size of its
+        deterministic seed floor. A category tagged <span class="pill pill-roadmap">no seeds yet (roadmap)</span>
+        has no curated seeds — its attacks come from the external-tool wrappers / public datasets
+        (<code>attacks/external.py</code>), so a <code>0</code> there means <em>not yet exercised</em>, not <em>passed</em>.
+      </div>
+      {% set max_cov = (category_coverage.values() | max) if category_coverage and (category_coverage.values() | max) > 0 else 1 %}
+      <div class="card-grid">
+        {% for cat, n in category_coverage.items() %}
+        {% set seeds = seed_floor.get(cat, 0) %}
+        <div class="cat-card{{ ' untested' if n == 0 else '' }}">
+          <div class="cat-card-head">
+            <span class="name">{{ cat }}</span>
+            <span class="pill pill-id">{{ category_id_map.get(cat, '—') }}</span>
+          </div>
+          <div class="desc">{{ category_desc.get(cat, '') }}</div>
+          <div class="bar-track" title="{{ n }} recorded attempt{{ '' if n == 1 else 's' }}">
+            <div class="bar-fill" style="width: {{ ((n / max_cov) * 100) | round(1) }}%;"></div>
+          </div>
+          <div class="meta">
+            <span class="pill pill-attempts">{{ n }} attempt{{ '' if n == 1 else 's' }}</span>
+            {% if seeds > 0 %}
+            <span class="pill">{{ seeds }} seed case{{ '' if seeds == 1 else 's' }}</span>
+            {% else %}
+            <span class="pill pill-roadmap">no seeds yet (roadmap)</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </section>
@@ -523,20 +660,32 @@
     </div>
 
     <div class="card">
-      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
-        Open/in-progress/regression findings by severity.
-        <!-- TODO: extend db.py with a full status-breakdown query (open/in_progress/resolved/lead/regression)
-             so we can show resolved and regression counts here without guessing. -->
-        Resolved and regression counts require a full status query not yet exposed by
-        <code>Database</code> — add <code>findings_status_summary()</code> in a future db.py update.
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+        The severity boxes above count <strong>open / in-progress / regression</strong> findings (the work list).
+        Status lifecycle: <code>open</code> → <code>in_progress</code> → <code>resolved</code> (fix landed
+        <em>and</em> the regression replay holds at the new SHA) — or back to <code>regression</code> if a
+        previously-resolved hole reappears. <code>lead</code> = surfaced for human triage, not yet a confirmed
+        finding. The full per-finding work list — reproducible attack, expected vs observed, suggested fix —
+        is in <code>RESILIENCE.md</code> (and §6 below).
       </div>
+
+      <div class="stat-row" style="margin-bottom: 14px;">
+        {% for st, label in [('open', 'Open'), ('in_progress', 'In progress'), ('resolved', 'Resolved'), ('regression', 'Regression'), ('lead', 'Lead')] %}
+        <div class="stat-box">
+          <div class="label">{{ label }}</div>
+          <div class="value"
+               style="color: {% if st == 'resolved' %}var(--ok){% elif st == 'regression' %}var(--danger){% elif st == 'lead' %}var(--lead-col){% else %}var(--text){% endif %};">{{ findings_status.get(st, 0) }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
       <div class="tbl-wrap">
         <table>
           <thead>
             <tr>
               <th>Severity</th>
               <th class="num">Open / In-Progress / Regression</th>
-              <th>Severity label</th>
+              <th>What this severity means</th>
             </tr>
           </thead>
           <tbody>
@@ -546,10 +695,10 @@
               <td><span class="badge badge-{{ sev }}">{{ sev }}</span></td>
               <td class="num">{{ n }}</td>
               <td class="muted">
-                {% if sev == 'critical' %}Invariant confirmed violated, critical clinical impact
+                {% if sev == 'critical' %}Invariant confirmed violated, critical clinical impact — held as a draft pending human approval before the report is filed
                 {% elif sev == 'high' %}Confirmed finding, significant risk
                 {% elif sev == 'medium' %}Confirmed finding, moderate risk
-                {% elif sev == 'lead' %}Surfaced for human triage — not yet confirmed
+                {% elif sev == 'lead' %}Surfaced for human triage — not yet adjudicated by an invariant or the corpus-validated Judge
                 {% endif %}
               </td>
             </tr>
@@ -675,9 +824,10 @@
 
   <!-- ====================================================================
        §6  ACTIVITY TIMELINE — recent runs as a per-agent timeline
+            + a collapsible per-finding detail panel
        ==================================================================== -->
   <section class="section" id="timeline">
-    <h2 class="section-heading"><span class="section-number">6</span>Per-Agent Activity Timeline</h2>
+    <h2 class="section-heading"><span class="section-number">6</span>Per-Agent Activity Timeline &amp; Findings Detail</h2>
     <div class="card">
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
         Recent runs in reverse-chronological order. Each row shows the Orchestrator directive,
@@ -724,6 +874,48 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Confirmed findings — collapsible detail (the data behind §4 and RESILIENCE.md) -->
+    <div class="card" style="margin-top: 14px;">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+        Confirmed findings, newest first — click to expand the reproducible attack, the expected
+        vs observed behaviour, the violated invariant, and the framework refs. This is the same
+        work list as <code>RESILIENCE.md</code> (which is the version to hand to whoever maintains
+        the Co-Pilot); the full vuln report for each finding lives under <code>reports/</code>.
+      </div>
+      {% for f in findings_detail %}
+      <details class="finding">
+        <summary>
+          <span class="badge badge-{{ f.severity if f.severity in ['critical','high','medium','lead'] else 'warn' }} summary-sev">{{ f.severity }}</span>
+          <span class="summary-cat">{{ f.category }} / {{ f.subcategory }}</span>
+          <span class="badge {{ 'badge-ok' if f.status == 'resolved' else ('badge-critical' if f.status == 'regression' else 'badge-warn') }}">{{ f.status }}</span>
+          <span class="muted" style="font-size: 0.8em;">{{ f.clinical_impact | truncate(90) }}</span>
+        </summary>
+        <div class="finding-body">
+          <dl>
+            <dt>Finding ID</dt><dd><code>{{ f.finding_id }}</code>{{ ' · human-approved' if f.human_approved else '' }}{{ ' · in regression suite' if f.in_regression_suite else '' }}</dd>
+            <dt>Target SHA observed on</dt><dd><code>{{ f.target_sha }}</code></dd>
+            <dt>Invariant violated</dt><dd><code>{{ f.invariant_id }}</code> · surface <code>{{ f.surface }}</code></dd>
+            <dt>Frameworks</dt><dd>{% for ref in (f.framework_mapping or []) %}<code style="margin-right:4px;">{{ ref }}</code>{% else %}<span class="dim">—</span>{% endfor %}</dd>
+            <dt>Exploitability</dt><dd>{{ f.exploitability }}</dd>
+            <dt>Clinical impact</dt><dd>{{ f.clinical_impact }}</dd>
+            <dt>Reproducible attack</dt>
+            <dd>
+              {% for turn in (f.prompt_or_sequence or []) %}
+              <div class="turn">Turn {{ loop.index }}: {{ turn }}</div>
+              {% endfor %}
+            </dd>
+            <dt>Expected safe behaviour</dt><dd>{{ f.expected_safe_behavior }}</dd>
+            <dt>Observed behaviour</dt><dd><code>{{ f.observed_behavior }}</code> ({{ f.check_type }}) — {{ f.judge_rationale }}</dd>
+            {% if f.response_redacted %}<dt>Target response (redacted)</dt><dd><div class="resp">{{ f.response_redacted }}</div></dd>{% endif %}
+            <dt>Full report</dt><dd>{% set rl = f.report_path | report_rel %}{% if rl %}<a href="{{ rl }}"><code>{{ rl }}</code></a>{% else %}<span class="dim">not generated yet</span>{% endif %}</dd>
+          </dl>
+        </div>
+      </details>
+      {% else %}
+      <div class="dim">No confirmed findings recorded yet — run <code>agentforge run</code> against the deployed target, or <code>agentforge seed-findings</code> to load the known Co-Pilot weaknesses.</div>
+      {% endfor %}
     </div>
   </section>
 

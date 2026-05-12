@@ -6,6 +6,7 @@ render the dashboard, and seed the known Co-Pilot findings.
     agentforge replay --finding <id> --n 10            # regression replay of a finding's case
     agentforge validate-judge                          # corpus-validate the Judge
     agentforge dashboard --out dashboard.html          # render the static HTML dashboard
+    agentforge resilience-report --out RESILIENCE.md   # render the target-hardening hand-off doc
     agentforge seed-findings                            # load the known seeded Co-Pilot findings + reports
 
 The target host is taken from ``COPILOT_BASE_URL`` (and must be on the adapter's
@@ -347,13 +348,34 @@ def validate_judge_cmd(
 def dashboard(
     db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB."),
     out: str = typer.Option("dashboard.html", "--out", help="Output HTML file."),
+    resilience_md: str | None = typer.Option(
+        None,
+        "--resilience-md",
+        help="Also write the RESILIENCE.md hand-off doc to this path.",
+    ),
 ) -> None:
     """Render the static observability dashboard from the findings DB."""
-    from agentforge.dashboard import write_dashboard
+    from agentforge.dashboard import write_dashboard, write_resilience_md
 
     db_file = db_path or get_settings().sqlite_db_path
     path = write_dashboard(db_file, out)
     console.print(f"[green]wrote dashboard → {path}[/green]")
+    if resilience_md:
+        rpath = write_resilience_md(db_file, resilience_md)
+        console.print(f"[green]wrote resilience report → {rpath}[/green]")
+
+
+@app.command(name="resilience-report")
+def resilience_report_cmd(
+    db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB."),
+    out: str = typer.Option("RESILIENCE.md", "--out", help="Output markdown file."),
+) -> None:
+    """Render RESILIENCE.md — the per-category pass/fail + open-findings work list to hand to the target's maintainer."""
+    from agentforge.dashboard import write_resilience_md
+
+    db_file = db_path or get_settings().sqlite_db_path
+    path = write_resilience_md(db_file, out)
+    console.print(f"[green]wrote resilience report → {path}[/green]")
 
 
 @app.command(name="seed-findings")

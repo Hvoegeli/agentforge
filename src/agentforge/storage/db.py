@@ -304,6 +304,70 @@ class Database:
         ).fetchall()
         return {r["severity"]: r["n"] for r in rows}
 
+    def findings_status_summary(self) -> dict[str, int]:
+        """{status: count} over all findings — feeds the §4 dashboard table.
+
+        Always includes every :class:`~agentforge.models.FindingStatus` value
+        (statuses with no findings map to 0)."""
+        rows = self._conn.execute(
+            "SELECT status, COUNT(*) AS n FROM findings GROUP BY status"
+        ).fetchall()
+        counts = {r["status"]: r["n"] for r in rows}
+        return {s.value: counts.get(s.value, 0) for s in FindingStatus}
+
+    def findings_detail(self, limit: int = 200) -> list[dict[str, Any]]:
+        """One row per finding, joined to its case / attempt / verdict.
+
+        Returns flat dicts (most-recent first) with everything the dashboard's
+        "confirmed findings — detail" section and ``RESILIENCE.md`` need: the
+        attack sequence, the expected-vs-observed behaviour, the invariant, the
+        judge's rationale, the framework refs, and the path to the generated
+        vuln report. Decodes the JSON columns to Python lists.
+        """
+        rows = self._conn.execute(
+            """
+            SELECT
+                f.id                AS finding_id,
+                f.category          AS category,
+                f.severity          AS severity,
+                f.status            AS status,
+                f.exploitability    AS exploitability,
+                f.clinical_impact   AS clinical_impact,
+                f.framework_mapping AS framework_mapping,
+                f.human_approved    AS human_approved,
+                f.report_path       AS report_path,
+                f.created_at        AS created_at,
+                ac.subcategory          AS subcategory,
+                ac.surface              AS surface,
+                ac.prompt_or_sequence   AS prompt_or_sequence,
+                ac.expected_safe_behavior AS expected_safe_behavior,
+                ac.invariant_id         AS invariant_id,
+                ac.in_regression_suite  AS in_regression_suite,
+                at.target_sha       AS target_sha,
+                at.request_summary  AS request_summary,
+                at.response_redacted AS response_redacted,
+                jv.observed_behavior AS observed_behavior,
+                jv.check_type        AS check_type,
+                jv.rationale         AS judge_rationale
+            FROM findings f
+            JOIN attack_cases ac    ON ac.id = f.attack_case_id
+            JOIN attack_attempts at ON at.id = f.attack_attempt_id
+            JOIN judge_verdicts jv  ON jv.id = f.judge_verdict_id
+            ORDER BY f.created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            d = dict(r)
+            d["framework_mapping"] = json.loads(d["framework_mapping"]) if d["framework_mapping"] else []
+            d["prompt_or_sequence"] = json.loads(d["prompt_or_sequence"]) if d["prompt_or_sequence"] else []
+            d["in_regression_suite"] = bool(d["in_regression_suite"])
+            d["human_approved"] = bool(d["human_approved"])
+            out.append(d)
+        return out
+
     def verdict_rates_by_category(self) -> dict[str, dict[str, int]]:
         """{category: {pass: n, fail: n, partial: n, uncertain: n}} over all attempts."""
         rows = self._conn.execute(

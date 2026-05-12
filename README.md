@@ -7,7 +7,7 @@
 **Target system (the "victim"):** the [OpenEMR Clinical Co-Pilot](https://github.com/Hvoegeli/openemr) (Weeks 1–2 build), running on Hetzner and exposed over a Cloudflare quick tunnel. AgentForge reaches the target over HTTP — exactly like an external attacker would — and never shares a process, a database, or a CI pipeline with it.
 
 - **Deployed target (Co-Pilot):** `https://hansen-rat-ages-rim.trycloudflare.com/` — *Cloudflare quick tunnel; the subdomain rotates on `cloudflared` restart, so the current URL is submitted with each checkpoint.* Pinned baseline SHA for the regression suite: `74aa5be4` (openemr `master`); the live deployment currently runs `1055abd71` (the pen-test fixes — see [`THREAT_MODEL.md`](THREAT_MODEL.md) § *Fix status*).
-- **Observability dashboard:** static HTML (committed snapshot at [`dashboard.html`](dashboard.html); deployed read-mostly behind basic auth — see [`deploy-dashboard.sh`](deploy-dashboard.sh)).
+- **Deployed AgentForge dashboard (this platform's own URL, separate from the Co-Pilot's):** `https://asin-vessels-differ-drunk.trycloudflare.com/` — the rendered observability dashboard, served from the Hetzner box behind its own Cloudflare quick tunnel (`systemd`: `agentforge-dashboard-http.service` serves `/opt/agentforge-dashboard/` on `:8090`, `agentforge-dashboard-tunnel.service` runs `cloudflared`). `RESILIENCE.md` is served at `/RESILIENCE.md`. *Quick-tunnel subdomain rotates if `cloudflared` restarts — the current URL is submitted with each checkpoint; run `journalctl -u agentforge-dashboard-tunnel -n 50 | grep trycloudflare` on the box for the live one.* Committed snapshot: [`dashboard.html`](dashboard.html). Companion hand-off doc [`RESILIENCE.md`](RESILIENCE.md) — per-category pass/fail + every open finding as a reproducible work list to give the Co-Pilot's maintainer; regenerate with `agentforge resilience-report`.
 - **Companion docs:** [`THREAT_MODEL.md`](THREAT_MODEL.md) (attack surface), [`ARCHITECTURE.md`](ARCHITECTURE.md) (multi-agent design + diagram), [`USERS.md`](USERS.md) (who uses it / why automation), [`evals/success_criteria.md`](evals/success_criteria.md) (the invariants), [`COST_LATENCY_REPORT.md`](COST_LATENCY_REPORT.md) (cost model + 100/1K/10K/100K projection), [`presearch.md`](presearch.md) (constraints + decisions).
 
 ## What it does
@@ -52,7 +52,8 @@ agentforge/
 ├── COST_LATENCY_REPORT.md    (agent-side cost model + 100/1K/10K/100K projection)
 ├── presearch.md              (planning doc — constraints, decisions, open questions)
 ├── dashboard.html            (rendered observability dashboard — static, self-contained)
-├── deploy-dashboard.sh       (regenerate the dashboard from a live run + scp it to the box)
+├── RESILIENCE.md             (generated: per-category pass/fail + open-findings work list for the target's maintainer)
+├── deploy-dashboard.sh       (regenerate the dashboard + RESILIENCE.md from a live run + scp the dashboard to the box)
 ├── reports/                  (the 6 generated vulnerability reports — 4 HIGH filed; 2 CRITICAL held as drafts under reports/drafts/)
 ├── evals/
 │   ├── success_criteria.md   (the invariant table — the Judge's spec)
@@ -61,7 +62,7 @@ agentforge/
 │   └── results/              (committed run artifacts)
 ├── src/agentforge/           (Python package — uv project)
 │   ├── models.py             (the Pydantic contracts between agents)
-│   ├── cli.py                (entrypoint: run / status / replay / validate-judge / dashboard / seed-findings / regression-suite)
+│   ├── cli.py                (entrypoint: run / status / replay / validate-judge / dashboard / resilience-report / seed-findings / regression-suite)
 │   ├── config.py             (settings + the target-host allowlist)
 │   ├── llm.py                (OpenRouter / Ollama model router)
 │   ├── known_findings.py     (the 6 seeded Co-Pilot findings — 4 day-one + 2 from the 2026-05-12 pen-test)
@@ -103,7 +104,8 @@ uv run agentforge status --db findings.sqlite          # coverage / verdict rate
 uv run agentforge validate-judge                        # corpus-validate the Judge (agreement / FP / FN)
 uv run agentforge replay --finding <id> --n 10 --target-url <url>   # regression-replay a finding's case
 uv run agentforge regression-suite --target-url <url>   # replay every in_regression_suite case (exits non-zero on any fail)
-uv run agentforge dashboard --db findings.sqlite --out dashboard.html   # render the observability dashboard
+uv run agentforge dashboard --db findings.sqlite --out dashboard.html --resilience-md RESILIENCE.md   # render the observability dashboard (+ the RESILIENCE.md work list)
+uv run agentforge resilience-report --db findings.sqlite --out RESILIENCE.md   # just the hand-off doc
 
 # one command: re-seed findings + fresh C1 floor against the live target + render + scp the dashboard to the box
 COPILOT_USERNAME=<test-account> COPILOT_PASSWORD=<password> ./deploy-dashboard.sh <current-trycloudflare-url>
