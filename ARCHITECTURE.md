@@ -252,45 +252,52 @@ flowchart TB
 
 ```
 agentforge/                         (this repo — GitHub: Hvoegeli/agentforge · GitLab: williamvoegeli/agentforge · MIT)
-├── README.md
-├── ARCHITECTURE.md                 (this file)
-├── THREAT_MODEL.md                 (attack surface + Framework Mapping Chart + glossary)
-├── USERS.md                        (who uses AgentForge, workflows, why automation — TBD)
+├── README.md                       (overview, setup, run instructions, deployed link)
+├── ARCHITECTURE.md                 (this file — multi-agent design + agent-interaction diagram)
+├── THREAT_MODEL.md                 (attack surface + Framework Mapping Chart + Resolved items / Fix status + glossary)
+├── USERS.md                        (who uses AgentForge, workflows, use cases, why automation)
+├── COST_LATENCY_REPORT.md          (agent-side cost model + 100/1K/10K/100K projection + refresh recipe)
 ├── presearch.md                    (constraints, decisions, open items)
+├── dashboard.html                  (rendered observability dashboard — static, self-contained)
+├── deploy-dashboard.sh             (regenerate the dashboard from a live run + scp it to the serving box)
 ├── evals/
 │   ├── success_criteria.md         (the invariant table — the Judge's spec)
 │   ├── judge_corpus/               (labeled ground-truth transcripts — the Judge validation set)
-│   ├── thresholds.yaml             (T/$C/S/N/k for the DoS invariants — TBD)
+│   ├── thresholds.yaml             (token / cost / wall-time / hop / amplification thresholds for the DoS invariants)
 │   └── results/                    (committed run artifacts)
 ├── src/agentforge/
 │   ├── models.py                   (the Pydantic contracts between agents)
-│   ├── cli.py                      (entrypoint)
-│   ├── llm.py                      (OpenRouter / Ollama router)
-│   ├── target/                     (Target Adapter — HTTP client, allowlist, rate cap, redaction)
-│   ├── attacks/                    (PyRIT / promptfoo / garak wrappers + corpus + the Red Team agent)
-│   ├── invariants/                 (the deterministic checkers, one per success_criteria invariant)
-│   ├── judge/                      (the Judge agent + the corpus-validation harness)
+│   ├── cli.py                      (entrypoint: run / status / replay / validate-judge / dashboard / seed-findings / regression-suite)
+│   ├── config.py                   (settings + the target-host allowlist)
+│   ├── llm.py                      (OpenRouter / Ollama model router)
+│   ├── known_findings.py           (the 6 seeded Co-Pilot findings — 4 day-one + 2 from the 2026-05-12 pen-test)
+│   ├── target/                     (Target Adapter — HTTP client, host allowlist, rate cap, redaction)
+│   ├── attacks/                    (deterministic floor — PyRIT/promptfoo/garak wrappers + curated corpus + the Red Team agent + LLM mutation + poisoned-doc rendering)
+│   ├── invariants/                 (the deterministic checkers, one per success_criteria invariant + thresholds loader)
+│   ├── judge/                      (the Judge agent + the LLM-Judge + the corpus-validation harness)
 │   ├── documentation/              (the Documentation agent + report templates)
-│   ├── orchestrator/               (the Orchestrator agent + the priority heuristic)
-│   ├── regression/                 (the Regression Curator + Suite)
-│   ├── storage/                    (SQLite + JSONL trace writer)
-│   ├── observability/              (metrics computation)
-│   └── dashboard/                  (Jinja2 render → static HTML; basic auth; STOP button)
-├── tests/
-├── .github/workflows/              (ci.yml; attack-loop.yml — scheduled; deploy.yml — TBD)
-├── reports/                        (generated vulnerability reports — TBD)
-├── pyproject.toml · .env.example · LICENSE · .gitignore · .python-version
+│   ├── orchestrator/               (the Orchestrator agent + the LangGraph StateGraph + the priority heuristic)
+│   ├── regression/                 (the Regression Curator + Suite — replay_case / replay_finding)
+│   ├── storage/                    (SQLite findings DB + JSONL trace writer)
+│   ├── observability/              (metrics computation for the dashboard)
+│   └── dashboard/                  (Jinja2 render → static HTML)
+├── tests/                          (pytest — 166 tests)
+├── .github/workflows/              (ci.yml; a scheduled attack-loop workflow is a roadmap item)
+├── pyproject.toml · uv.lock · .env.example · LICENSE · .python-version
 ```
 
 The *target* (the Clinical Co-Pilot) lives in a separate repo ([Hvoegeli/openemr](https://github.com/Hvoegeli/openemr)). AgentForge reaches it over HTTP — no shared process, no shared database, no shared CI. AgentForge's confirmed-exploit regression suite is published as a release artifact that the openemr repo's CI can pull in to gate the Co-Pilot's build.
 
 ---
 
-## Open items (mirrored from `THREAT_MODEL.md` / `evals/success_criteria.md`)
+## Status (mirrored from `THREAT_MODEL.md` / `evals/success_criteria.md`)
 
-1. Verify the panel ACL on the Co-Pilot's dashboard / binary / document-source endpoints → possible day-one C2 IDOR finding.
-2. Verify whether the Co-Pilot's chat endpoints accept client-supplied conversation history → possible direct C3 exploit path.
-3. Verify the Co-Pilot's worker→tools loop iteration bound → feeds C5's `N` threshold.
-4. Pin the Co-Pilot git SHA at the MVP baseline → record in `THREAT_MODEL.md`.
-5. Fill `evals/thresholds.yaml` from `clinical-copilot/COST_LATENCY_REPORT.md` p95 figures.
-6. Verify the exact OpenRouter model slugs for WhiteRabbitNeo / Dolphin-3 / Qwen3-32B / Mistral-Large-2 / Llama-3.1-8B against `openrouter.ai/models`.
+The MVP-baseline verification items are **resolved** — see `THREAT_MODEL.md` § *Resolved items* and § *Fix status*:
+
+1. Panel ACL on the Co-Pilot's patient-scoped HTTP endpoints — verified: dashboard / document-source are panel-gated; `/api/binary/{id}` was **not** at baseline `74aa5be4` → **day-one C2 IDOR finding** (fixed in `1055abd71`).
+2. Client-supplied conversation history — verified: `/chat` does not accept it; *but* the `SESSIONS` store was keyed by `session_id` alone (no owner check), which — with `/api/traces` being login-gated, not admin-gated — is a **session-adoption cross-panel PHI chain** (both surfaced by a 2026-05-12 manual pass; both fixed in `1055abd71`; both seeded as C2 findings + regression cases).
+3. Worker→tools loop bound — verified: bounded by `MAX_SUPERVISOR_ROUTES = 4` (so C5's `N = 4`; the genuinely unbounded C5 vectors are the document fan-out and the no-per-request-token-cap).
+4. Co-Pilot SHA — pinned at `74aa5be4` (the MVP regression baseline) at the top of `THREAT_MODEL.md`; the live deployment now runs `1055abd71`.
+5. `evals/thresholds.yaml` — filled from `clinical-copilot/COST_LATENCY_REPORT.md` p95 figures + a live local C1 run.
+
+Still open (Final-week): production-grade Judge corpus; live re-execution for the HTTP-setup findings (`raw_http_get` / `session_adoption`) + an admin observability account so the adapter can enrich C4/C5 attempts with trace data against the patched target (which now 403s `/api/traces` for non-admins — the F6 fix); confirming the exact OpenRouter model slugs; re-pinning the baseline.
