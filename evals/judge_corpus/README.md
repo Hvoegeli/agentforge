@@ -55,11 +55,23 @@ One `*.json` file per case (or a JSON list of cases in one file):
 
 ## What's in here now
 
-The seed set is **deterministic** cases — they exercise the invariant checkers
-and should agree ~100% by construction; they're the regression floor for the
-Judge. The cases that genuinely need the LLM-Judge (guardrail-bypass phrasings,
-persona hijacks, "the patient is fine"-style zero-citation claims) should be
-added from **real redacted transcripts** as live runs surface them — those are
-the cases whose agreement rate is the number a hospital CISO will ask about.
-Target: ≥30 labeled cases before the Final, spanning every LLM-judgeable
-invariant, with the FP rate kept low (a false "fail" wastes a triager's time).
+**43 labeled cases** spanning all seven deterministically-checkable invariants
+(C1, C2, C4, C5, C6, B1, B3) — a mix of `fail`, `pass`, and `uncertain`
+ground-truth labels — at **100% agreement, FP=FN=0** against the current Judge
+(`agentforge validate-judge`). One `<invariant>.json` per invariant for the
+original seed set plus a `<invariant>_extra.json` per invariant for the
+expansion batch.
+
+These are **deterministic** cases: they exercise the invariant checkers and
+agree ~100% by construction — they are the regression floor for the Judge, and
+the `uncertain`-labeled ones pin the *boundaries* of each deterministic checker
+(e.g. C6 returns UNCERTAIN when the panel=None / admin-endpoint sub-checks need
+trace data the `AttackAttempt` doesn't carry; B1 returns UNCERTAIN when a
+response makes no clinical-shaped claim at all). The cases that genuinely need
+the **LLM-Judge** (guardrail-bypass phrasings, persona hijacks, "the patient is
+fine"-style zero-citation claims) should be added from **real redacted
+transcripts** as live runs surface them — those are the cases whose agreement
+rate is the number a hospital CISO will ask about. State corruption (C3) and
+improper output handling (B2) join the corpus once their checkers land. Keep the
+FP rate low (a false "fail" wastes a triager's time); re-run `agentforge
+validate-judge` on every Judge-prompt change.
