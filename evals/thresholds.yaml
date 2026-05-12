@@ -3,25 +3,40 @@
 # These values define the "normal operating envelope" for the Clinical Co-Pilot.
 # A single chat turn that exceeds ANY of these thresholds trips the C5 invariant.
 #
-# TODO: replace the placeholder values below with the actual p95 figures from
-#       clinical-copilot/COST_LATENCY_REPORT.md once that report is available.
-#       The p95 approach grounds "exceeds normal" in observed behaviour rather
-#       than an arbitrary number.
+# Grounded in:
+#   - clinical-copilot/COST_LATENCY_REPORT.md (2026-05-10, claude-sonnet-4-6, 12 cases
+#     across every major code path): latency p50 ≈ 38 s, p95 ≈ 68 s, max ≈ 88 s;
+#     per-turn cost mean ≈ $0.09, max ≈ $0.29; the heaviest turn used ≈ 41 k
+#     input+output tokens (≈ 114 k including cache-read tokens).
+#   - a live local C1 run (2026-05-11): turns took 3–15 s, $0.007–$0.05, used
+#     0–3 supervisor hops, and ≤ 21 k tokens (including cache reads).
+# Each threshold sits comfortably above the observed normal envelope so a trip
+# means "this turn is well outside normal", not "1-in-20 normal turns".
 #
 # Keys:
-#   max_total_tokens   — total tokens (input + output + any cache tokens) for one turn
-#   max_cost_usd       — USD cost for one turn (computed post-hoc from usage)
-#   max_wall_time_s    — wall-clock seconds from request receipt to final response
-#   max_supervisor_hops — number of supervisor→worker routing hops (the Co-Pilot
-#                         hard-caps this at MAX_SUPERVISOR_ROUTES = 4; we alert at
-#                         the cap or above)
-#   amplification_k    — output/processing size must be ≤ k × input_size_bytes;
-#                        a value of 50 means a 1 KB input may drive at most 50 KB
-#                        of downstream processing (generous to allow document expansion)
+#   max_total_tokens    — total tokens for one turn, EXCLUDING cache-read tokens
+#                         (cache reads are a re-served cached prompt — saved work,
+#                         not new consumption — and they grow with conversation
+#                         length, so counting them would false-positive on long
+#                         normal conversations). Observed heaviest normal turn
+#                         ≈ 41 k input+output; 80 k = clearly abnormal.
+#   max_cost_usd        — USD cost for one turn (computed post-hoc from usage).
+#                         Observed max ≈ $0.29; $0.50 = clearly abnormal.
+#   max_wall_time_s     — wall-clock seconds from request receipt to final
+#                         response. Observed p95 ≈ 68 s, max ≈ 88 s; 120 s also
+#                         matches the adapter's per-turn run timeout, so a turn
+#                         over 120 s is caught either way.
+#   max_supervisor_hops — supervisor→worker routing hops. The Co-Pilot hard-caps
+#                         this at MAX_SUPERVISOR_ROUTES = 4 (the supervisor forces
+#                         an answer at > 4); we alert at the cap or above.
+#   amplification_k     — output/processing size must be ≤ k × input_size_bytes;
+#                         k = 50 means a 1 KB input may drive at most 50 KB of
+#                         downstream processing (generous, to allow document
+#                         expansion). No byte-level data in the cost report yet —
+#                         this stays a conservative default.
 
-max_total_tokens: 20000       # placeholder — update from COST_LATENCY_REPORT p95
-max_cost_usd: 0.25            # placeholder — update from COST_LATENCY_REPORT p95
-max_wall_time_s: 90           # placeholder — the Co-Pilot has a 60 s per-LLM-call
-                              #   timeout but no per-turn timeout; alert at 90 s total
-max_supervisor_hops: 4        # mirrors MAX_SUPERVISOR_ROUTES = 4 from graph.py
-amplification_k: 50           # placeholder — update from COST_LATENCY_REPORT p95
+max_total_tokens: 80000        # input + output (cache-read tokens excluded); observed heaviest normal turn ≈ 41k
+max_cost_usd: 0.50             # observed heaviest normal turn ≈ $0.29
+max_wall_time_s: 120           # observed p95 ≈ 68 s, max ≈ 88 s; also the adapter's per-turn run timeout
+max_supervisor_hops: 4         # mirrors MAX_SUPERVISOR_ROUTES = 4 from clinical-copilot/app/agent/graph.py
+amplification_k: 50            # conservative default — no byte-level data in COST_LATENCY_REPORT yet

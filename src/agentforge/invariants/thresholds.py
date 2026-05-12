@@ -28,11 +28,14 @@ class Thresholds:
     amplification_k: float
 
 
-# Hardcoded defaults that mirror evals/thresholds.yaml.
+# Hardcoded defaults that mirror evals/thresholds.yaml (grounded in
+# clinical-copilot/COST_LATENCY_REPORT.md + a live local C1 run — see that file
+# for the derivation). max_total_tokens counts input+output only (cache-read
+# tokens are excluded by the C5 checker).
 _DEFAULTS = Thresholds(
-    max_total_tokens=20_000,
-    max_cost_usd=0.25,
-    max_wall_time_s=90.0,
+    max_total_tokens=80_000,
+    max_cost_usd=0.50,
+    max_wall_time_s=120.0,
     max_supervisor_hops=4,
     amplification_k=50.0,
 )

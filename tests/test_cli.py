@@ -47,7 +47,7 @@ def test_run_against_unreachable_target_exits_cleanly(tmp_path: Path) -> None:
     r = runner.invoke(
         app,
         ["run", "--category", "C1", "--max-attacks", "1", "--db", str(db),
-         "--reports-dir", str(tmp_path / "rep"), "--target-url", "http://localhost:7300"],
+         "--reports-dir", str(tmp_path / "rep"), "--target-url", "http://127.0.0.1:1"],
     )
     # the target isn't running → the run aborts gracefully (no traceback), exit 0
     assert r.exit_code == 0, r.output
@@ -64,7 +64,7 @@ def test_replay_against_unreachable_target_exits_2(tmp_path: Path) -> None:
     d = Database(str(db))
     fid = d.open_findings()[0].id
     d.close()
-    r = runner.invoke(app, ["replay", "--finding", fid, "--n", "2", "--db", str(db), "--target-url", "http://localhost:7300"])
+    r = runner.invoke(app, ["replay", "--finding", fid, "--n", "2", "--db", str(db), "--target-url", "http://127.0.0.1:1"])
     assert r.exit_code == 2  # target not available
     assert "not available" in r.stdout.lower() or "target" in r.stdout.lower()
 
@@ -78,6 +78,6 @@ def test_regression_suite_empty_then_populated(tmp_path: Path) -> None:
     # seed the 3 known findings (their cases are in_regression_suite=1), then the suite is
     # non-empty — but the target is unreachable, so it exits 2 before replaying.
     runner.invoke(app, ["seed-findings", "--db", str(db), "--reports-dir", str(tmp_path / "rep")])
-    r = runner.invoke(app, ["regression-suite", "--db", str(db), "--target-url", "http://localhost:7300"])
+    r = runner.invoke(app, ["regression-suite", "--db", str(db), "--target-url", "http://127.0.0.1:1"])
     assert r.exit_code == 2
     assert "not available" in r.stdout.lower() or "target" in r.stdout.lower()

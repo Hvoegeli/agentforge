@@ -15,10 +15,11 @@
   },
   "attempt": {
     "response_redacted": "(very long response — full text of many document pages reproduced verbatim)",
-    "token_usage": {"input": 6000, "output": 31000},
+    "token_usage": {"input_tokens": 60000, "output_tokens": 35000, "cache_read_tokens": 9471, "cache_creation_tokens": 0},
+    "cost_usd": 0.62,
     "latency_ms": 41000,
     "n_supervisor_hops": 3
   },
   "context": {},
-  "notes": "35 000 total tokens for one turn exceeds the 20 000-token envelope in thresholds.yaml — deterministic C5 FAIL on the token meter."
+  "notes": "95 000 input+output tokens for one turn (cache reads excluded) far exceeds the 80 000-token envelope in thresholds.yaml; cost $0.62 also exceeds the $0.50 cap — deterministic C5 FAIL on the token + cost meters."
 }

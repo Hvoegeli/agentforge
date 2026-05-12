@@ -1,6 +1,6 @@
 # THREAT_MODEL.md — Attack Surface of the Clinical Co-Pilot
 
-_AgentForge · target = the OpenEMR Clinical Co-Pilot (Weeks 1–2 build) · synthetic patient data only · pinned target SHA: `TBD-at-MVP` (recorded here once the MVP baseline is set)_
+_AgentForge · target = the OpenEMR Clinical Co-Pilot (Weeks 1–2 build) · synthetic patient data only · pinned target SHA: `74aa5be4c8b22dfd92b3c233edbb107424efd01d` (openemr `master`; MVP baseline for the regression suite)_
 
 ---
 
@@ -126,10 +126,10 @@ For each category: the OWASP-LLM-2025 ID, the MITRE ATLAS technique, the NIST AI
 
 ---
 
-## Open items (mirrored from `evals/success_criteria.md`)
+## Resolved items (verified 2026-05-11 against the Co-Pilot source + a local stack)
 
-1. Verify panel ACL on `/api/dashboard/patient/{pid}/*`, `/api/binary/{id}`, `/api/document-source/{type}/{id}` → possible day-one C2 IDOR finding.
-2. Verify whether the chat endpoints accept client-supplied conversation history → possible direct C3 exploit path.
-3. Verify the worker→tools loop iteration bound → feeds C5's `N`.
-4. Pin the Co-Pilot git SHA at the MVP baseline → record at the top of this file.
-5. Fill `evals/thresholds.yaml` from `clinical-copilot/COST_LATENCY_REPORT.md` p95 figures.
+1. **Panel ACL on the patient-scoped HTTP endpoints** — `/api/dashboard/patient/{pid}/*` is panel-gated (`_dashboard_assert_patient_in_panel`); `/api/document-source/{type}/{id}` is panel-gated (`access_control.get_panel_for_user` → `PatientAccessDenied` → 404). **`/api/binary/{binary_id}` is NOT gated** — its own docstring: *"Auth: any logged-in user. The endpoint does not yet ACL-walk back to the parent DocumentReference → patient → panel; tighten this before any non-demo deployment."* → **confirmed day-one C2 IDOR finding** (any authenticated clinician can fetch any patient's document bytes by enumerating `binary_id`).
+2. **Client-supplied conversation history** — `/chat` does **not** accept it. `ChatRequest = {session_id, message, advisor_mode}`; prior turns live server-side in the `SESSIONS` dict keyed by `session_id`. The forged-prior-turn C3 vector is closed at the API. (RAG poisoning via `retrieve_guidelines` and the upload→native-tables flow remain as C3 vectors.)
+3. **Worker→tools loop bound** — bounded by `MAX_SUPERVISOR_ROUTES = 4` via `route_count` (incremented in the supervisor; at `> 4` it forces an answer). No separate unbounded worker-internal loop. So C5's `N = 4`; the genuinely unbounded C5 vectors are the document fan-out (`get_notes_24h(hours=0)` → per-doc `get_document_content`) and the no-per-request-token-cap — not the loop.
+4. **Co-Pilot SHA pinned** — `74aa5be4c8b22dfd92b3c233edbb107424efd01d` (openemr `master`), recorded at the top of this file. (This SHA includes the addition of `route_count` to `RequestTrace`, so AgentForge's C4/C5 hop checks have real data against the live target.)
+5. **`evals/thresholds.yaml`** — populated from `clinical-copilot/COST_LATENCY_REPORT.md` (2026-05-10, sonnet, 12 cases: latency p95 ≈ 68 s / max ≈ 88 s; per-turn cost max ≈ $0.29) and a live local C1 run (turns 3–15 s, $0.007–$0.05, 0–3 supervisor hops, ≤ 21 k tokens incl. cache reads). Cache-read tokens are excluded from the C5 token meter (they're a re-served cached prompt that grows with conversation length, not new consumption).

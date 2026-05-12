@@ -92,6 +92,28 @@ def _open_db(db_path: str | None):
     return Database(db_path or get_settings().sqlite_db_path)
 
 
+def _require_target_ready(adapter) -> None:
+    """Health-check + log in to the target; on either failure, print and `exit(2)`.
+
+    A login failure (bad creds, OpenEMR not reachable behind the Co-Pilot) is
+    treated the same as the target being down — the command can't do useful work.
+    """
+    ok = getattr(adapter, "require_healthy", None)
+    if callable(ok):
+        try:
+            ok()
+        except Exception as exc:
+            console.print(f"[red]target not available: {exc}[/red]")
+            raise typer.Exit(code=2) from exc
+    login = getattr(adapter, "ensure_logged_in", None)
+    if callable(login):
+        try:
+            login()
+        except Exception as exc:
+            console.print(f"[red]target login failed: {exc}[/red]")
+            raise typer.Exit(code=2) from exc
+
+
 # --------------------------------------------------------------------------- #
 @app.command()
 def version() -> None:
@@ -196,16 +218,7 @@ def replay(
     db = _open_db(db_path)
     adapter = _build_adapter(target_url, target_sha)
     try:
-        ok = getattr(adapter, "require_healthy", None)
-        if callable(ok):
-            try:
-                ok()
-            except Exception as exc:
-                console.print(f"[red]target not available: {exc}[/red]")
-                raise typer.Exit(code=2) from exc
-        login = getattr(adapter, "ensure_logged_in", None)
-        if callable(login):
-            login()
+        _require_target_ready(adapter)
         if finding:
             result = replay_finding(finding, db=db, adapter=adapter, n=n)
             case_id = result.case_id
@@ -247,16 +260,7 @@ def regression_suite_cmd(
         if not cases:
             console.print("[yellow]regression suite is empty (no cases with in_regression_suite=1).[/yellow]")
             raise typer.Exit(code=0)
-        ok = getattr(adapter, "require_healthy", None)
-        if callable(ok):
-            try:
-                ok()
-            except Exception as exc:
-                console.print(f"[red]target not available: {exc}[/red]")
-                raise typer.Exit(code=2) from exc
-        login = getattr(adapter, "ensure_logged_in", None)
-        if callable(login):
-            login()
+        _require_target_ready(adapter)
 
         t = Table(title=f"Regression suite — {len(cases)} case(s) × {n} replay(s) each")
         t.add_column("case")

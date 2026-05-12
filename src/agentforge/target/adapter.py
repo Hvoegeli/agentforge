@@ -334,11 +334,11 @@ class TargetAdapter:
                     str(k): int(v) for k, v in usage.items() if isinstance(v, int | float)
                 }
             cost_usd = float(trace.get("cost_usd", 0.0) or 0.0)
-            # NOTE: RequestTrace.to_dict() doesn't surface the supervisor-loop
-            # `route_count` (it lives on AgentState, not the trace) — so hops stay
-            # None for now. Ask the Co-Pilot maintainer to add it; the C4/C5 checkers
-            # already treat n_supervisor_hops=None as "not checkable".
-            n_hops = trace.get("route_count") or trace.get("supervisor_routes")
+            # Supervisor routing-hop count: the Co-Pilot's RequestTrace now carries
+            # `route_count` (added 2026-05-11). Use .get with a fallback so a real 0
+            # is recorded as 0 (not coerced to None by `0 or …`); only when neither
+            # key is present do the C4/C5 hop checks see None ("not checkable").
+            n_hops = trace.get("route_count", trace.get("supervisor_routes"))
 
         # latency: prefer the target's own measured turn latency when we have a
         # single-turn trace; otherwise the wall-clock around our request(s).
