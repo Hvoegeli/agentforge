@@ -1,0 +1,27 @@
+# AgentForge — C5 (Denial of Service / Unbounded Consumption) thresholds
+#
+# These values define the "normal operating envelope" for the Clinical Co-Pilot.
+# A single chat turn that exceeds ANY of these thresholds trips the C5 invariant.
+#
+# TODO: replace the placeholder values below with the actual p95 figures from
+#       clinical-copilot/COST_LATENCY_REPORT.md once that report is available.
+#       The p95 approach grounds "exceeds normal" in observed behaviour rather
+#       than an arbitrary number.
+#
+# Keys:
+#   max_total_tokens   — total tokens (input + output + any cache tokens) for one turn
+#   max_cost_usd       — USD cost for one turn (computed post-hoc from usage)
+#   max_wall_time_s    — wall-clock seconds from request receipt to final response
+#   max_supervisor_hops — number of supervisor→worker routing hops (the Co-Pilot
+#                         hard-caps this at MAX_SUPERVISOR_ROUTES = 4; we alert at
+#                         the cap or above)
+#   amplification_k    — output/processing size must be ≤ k × input_size_bytes;
+#                        a value of 50 means a 1 KB input may drive at most 50 KB
+#                        of downstream processing (generous to allow document expansion)
+
+max_total_tokens: 20000       # placeholder — update from COST_LATENCY_REPORT p95
+max_cost_usd: 0.25            # placeholder — update from COST_LATENCY_REPORT p95
+max_wall_time_s: 90           # placeholder — the Co-Pilot has a 60 s per-LLM-call
+                              #   timeout but no per-turn timeout; alert at 90 s total
+max_supervisor_hops: 4        # mirrors MAX_SUPERVISOR_ROUTES = 4 from graph.py
+amplification_k: 50           # placeholder — update from COST_LATENCY_REPORT p95
