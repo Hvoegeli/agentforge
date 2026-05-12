@@ -338,6 +338,28 @@ class Database:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_attack_case(self, case_id: str) -> AttackCase | None:
+        row = self._conn.execute("SELECT * FROM attack_cases WHERE id = ?", (case_id,)).fetchone()
+        return self._attack_case_from_row(row) if row is not None else None
+
+    def get_finding(self, finding_id: str) -> Finding | None:
+        row = self._conn.execute("SELECT * FROM findings WHERE id = ?", (finding_id,)).fetchone()
+        return self._finding_from_row(row) if row is not None else None
+
+    def open_findings(self) -> list[Finding]:
+        rows = self._conn.execute(
+            "SELECT * FROM findings WHERE status IN ('open', 'in_progress', 'regression') "
+            "ORDER BY created_at DESC"
+        ).fetchall()
+        return [self._finding_from_row(r) for r in rows]
+
+    def mark_in_regression(self, case_id: str, *, in_suite: bool = True) -> None:
+        with self._tx() as conn:
+            conn.execute(
+                "UPDATE attack_cases SET in_regression_suite = ? WHERE id = ?",
+                (int(in_suite), case_id),
+            )
+
     # -- row -> model helpers ---------------------------------------------- #
     def _columns(self, table: str) -> set[str]:
         return {r["name"] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -350,3 +372,11 @@ class Database:
         d["framework_refs"] = json.loads(d["framework_refs"])
         d["in_regression_suite"] = bool(d["in_regression_suite"])
         return AttackCase.model_validate(d)
+
+    @staticmethod
+    def _finding_from_row(row: sqlite3.Row) -> Finding:
+        d = dict(row)
+        d["framework_mapping"] = json.loads(d["framework_mapping"])
+        d["evidence_links"] = json.loads(d["evidence_links"])
+        d["human_approved"] = bool(d["human_approved"])
+        return Finding.model_validate(d)
