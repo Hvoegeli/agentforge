@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<!--
+  AgentForge Observability Dashboard — static HTML render from the findings DB.
+
+  DEPLOYMENT NOTE: the deployed dashboard serves this file behind HTTP basic auth
+  (configured in the reverse-proxy / FastAPI middleware layer). The /stop route
+  below is wired to a kill-switch: writing a STOP sentinel file that the
+  Orchestrator polls before each attack batch. In the static render (this file)
+  the button is visible but non-functional — wire it up in the deploy target.
+
+  STOP SENTINEL: on the deployed instance, POST /stop writes a sentinel file at
+  the path defined by STOP_SENTINEL_PATH in config.py. The Orchestrator checks
+  this file at the start of every attack batch and halts if it exists. The
+  sentinel is deleted when a new authorized run starts.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentForge — Adversarial Eval Dashboard</title>
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Reset + base                                                         */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface2:    #22263a;
+      --border:      #2e3352;
+      --accent:      #5b8ef0;
+      --accent2:     #8b5cf6;
+      --danger:      #ef4444;
+      --warn:        #f59e0b;
+      --ok:          #22c55e;
+      --partial:     #3b82f6;
+      --uncertain:   #94a3b8;
+      --text:        #e2e8f0;
+      --text-muted:  #94a3b8;
+      --text-dim:    #64748b;
+      --critical:    #ef4444;
+      --high:        #f97316;
+      --medium:      #eab308;
+      --lead-col:    #a78bfa;
+      --font:        'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      --mono:        'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: var(--mono); font-size: 0.85em; background: var(--surface2); padding: 1px 5px; border-radius: 3px; }
+
+    /* ------------------------------------------------------------------ */
+    /* Layout                                                               */
+    /* ------------------------------------------------------------------ */
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+    /* ------------------------------------------------------------------ */
+    /* Header + STOP button                                                 */
+    /* ------------------------------------------------------------------ */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 18px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-left h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .header-left .subtitle {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* STOP button */
+    .stop-form button {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 22px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .stop-form button:hover { background: #dc2626; transform: scale(1.02); }
+    .stop-form button:active { transform: scale(0.98); }
+    .stop-icon { font-size: 1.1em; }
+
+    /* ------------------------------------------------------------------ */
+    /* Section headings                                                     */
+    /* ------------------------------------------------------------------ */
+    .section {
+      margin-bottom: 36px;
+    }
+
+    .section-heading {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      border-left: 3px solid var(--accent);
+      padding-left: 12px;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .section-number {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Cards                                                                */
+    /* ------------------------------------------------------------------ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+
+    .stat-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .stat-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 18px;
+      min-width: 130px;
+      flex: 1;
+    }
+
+    .stat-box .label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-box .value { font-size: 1.6rem; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+    /* ------------------------------------------------------------------ */
+    /* Tables                                                               */
+    /* ------------------------------------------------------------------ */
+    .tbl-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    thead th {
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+
+    td {
+      padding: 8px 12px;
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+    td.muted { color: var(--text-muted); }
+    td.dim { color: var(--text-dim); font-size: 0.8em; }
+
+    /* ------------------------------------------------------------------ */
+    /* Bar mini-charts (pure CSS)                                           */
+    /* ------------------------------------------------------------------ */
+    .bar-cell { width: 140px; }
+
+    .bar-track {
+      background: var(--surface2);
+      border-radius: 3px;
+      height: 10px;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+
+    /* stacked verdict bars */
+    .verdict-bar {
+      display: flex;
+      height: 10px;
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 120px;
+    }
+    .vb-pass     { background: var(--ok); }
+    .vb-fail     { background: var(--danger); }
+    .vb-partial  { background: var(--partial); }
+    .vb-uncertain { background: var(--uncertain); }
+
+    /* ------------------------------------------------------------------ */
+    /* Badge / pill                                                         */
+    /* ------------------------------------------------------------------ */
+    .badge {
+      display: inline-block;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-critical { background: rgba(239,68,68,0.18); color: var(--critical); }
+    .badge-high     { background: rgba(249,115,22,0.18); color: var(--high); }
+    .badge-medium   { background: rgba(234,179,8,0.18);  color: var(--medium); }
+    .badge-lead     { background: rgba(167,139,250,0.18); color: var(--lead-col); }
+    .badge-ok       { background: rgba(34,197,94,0.18); color: var(--ok); }
+    .badge-warn     { background: rgba(245,158,11,0.18); color: var(--warn); }
+
+    /* ------------------------------------------------------------------ */
+    /* Trend arrows                                                         */
+    /* ------------------------------------------------------------------ */
+    .trend-up   { color: var(--ok); font-size: 1.1em; }
+    .trend-down { color: var(--danger); font-size: 1.1em; }
+    .trend-flat { color: var(--text-muted); font-size: 1.1em; }
+
+    /* ------------------------------------------------------------------ */
+    /* Footer                                                               */
+    /* ------------------------------------------------------------------ */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      margin-top: 40px;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Responsive tweaks                                                    */
+    /* ------------------------------------------------------------------ */
+    @media (max-width: 640px) {
+      .stat-box { min-width: 45%; }
+      .header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ====================================================================
+       HEADER + STOP BUTTON
+       ==================================================================== -->
+  <header class="header">
+    <div class="header-left">
+      <h1>AgentForge — Adversarial Eval Dashboard</h1>
+      <div class="subtitle">
+        Clinical Co-Pilot red-team observability &nbsp;·&nbsp;
+        Rendered {{ rendered_at }}
+      </div>
+    </div>
+
+    <!-- STOP BUTTON
+         On the deployed dashboard this form POST /stop writes a sentinel file
+         that the Orchestrator polls before each attack batch. The static render
+         shows the button; wiring /stop to the kill-switch is a deploy concern.
+    -->
+    <form class="stop-form" action="/stop" method="post">
+      <button type="submit">
+        <span class="stop-icon">⏹</span> STOP
+      </button>
+    </form>
+  </header>
+
+  <!-- ====================================================================
+       §1  COVERAGE — which categories tested + cases each
+       ==================================================================== -->
+  <section class="section" id="coverage">
+    <h2 class="section-heading"><span class="section-number">1</span>Coverage — Attack Categories</h2>
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>ID</th>
+              <th class="num">Attempts</th>
+              <th class="bar-cell">Volume</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set max_cov = category_coverage.values() | max if category_coverage else 1 %}
+            {% for cat, n in category_coverage.items() %}
+            <tr>
+              <td><code>{{ cat }}</code></td>
+              <td class="muted">{{ category_id_map.get(cat, '') }}</td>
+              <td class="num">{{ n }}</td>
+              <td class="bar-cell">
+                <div class="bar-track">
+                  <div class="bar-fill" style="width: {{ ((n / max_cov) * 100) | round(1) if max_cov > 0 else 0 }}%;"></div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       §2  RESILIENCE — pass/fail/partial/uncertain rates by category & SHA
+       ==================================================================== -->
+  <section class="section" id="resilience">
+    <h2 class="section-heading"><span class="section-number">2</span>Resilience — Verdict Rates by Category &amp; Target SHA</h2>
+
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th class="num">Pass</th>
+              <th class="num">Fail</th>
+              <th class="num">Partial</th>
+              <th class="num">Uncertain</th>
+              <th class="num">Total</th>
+              <th>Pass-rate bar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cat, verdicts in verdict_rates.items() %}
+            {% set n_pass = verdicts.get('pass', 0) %}
+            {% set n_fail = verdicts.get('fail', 0) %}
+            {% set n_partial = verdicts.get('partial', 0) %}
+            {% set n_uncertain = verdicts.get('uncertain', 0) %}
+            {% set total = n_pass + n_fail + n_partial + n_uncertain %}
+            {% set pass_pct = ((n_pass / total) * 100) | round(1) if total > 0 else 0 %}
+            {% set fail_pct = ((n_fail / total) * 100) | round(1) if total > 0 else 0 %}
+            {% set partial_pct = ((n_partial / total) * 100) | round(1) if total > 0 else 0 %}
+            {% set uncertain_pct = ((n_uncertain / total) * 100) | round(1) if total > 0 else 0 %}
+            <tr>
+              <td><code>{{ cat }}</code></td>
+              <td class="num" style="color: var(--ok);">{{ n_pass }}</td>
+              <td class="num" style="color: var(--danger);">{{ n_fail }}</td>
+              <td class="num" style="color: var(--partial);">{{ n_partial }}</td>
+              <td class="num" style="color: var(--uncertain);">{{ n_uncertain }}</td>
+              <td class="num">{{ total }}</td>
+              <td>
+                {% if total > 0 %}
+                <div class="verdict-bar" title="pass {{ pass_pct }}% / fail {{ fail_pct }}% / partial {{ partial_pct }}% / uncertain {{ uncertain_pct }}%">
+                  <div class="vb-pass"     style="width: {{ pass_pct }}%;"></div>
+                  <div class="vb-fail"     style="width: {{ fail_pct }}%;"></div>
+                  <div class="vb-partial"  style="width: {{ partial_pct }}%;"></div>
+                  <div class="vb-uncertain" style="width: {{ uncertain_pct }}%;"></div>
+                </div>
+                {% else %}
+                <span style="color: var(--text-dim);">no data</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Per-SHA resilience table -->
+    <div class="card" style="margin-top: 14px;">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+        Pass-rate by target SHA (from recent runs)
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Target SHA</th>
+              <th class="num">Runs</th>
+              <th class="num">Attacks</th>
+              <th class="num">Confirmed Findings</th>
+              <th class="num">Uncertain</th>
+              <th class="num">Pass-rate (est.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sha, stats in sha_stats.items() %}
+            {% set est_pass = ((1 - stats.finding_rate) * 100) | round(1) if stats.n_attacks > 0 else 0 %}
+            <tr>
+              <td><code>{{ sha[:12] if sha|length > 12 else sha }}</code></td>
+              <td class="num">{{ stats.n_runs }}</td>
+              <td class="num">{{ stats.n_attacks }}</td>
+              <td class="num">{{ stats.n_findings }}</td>
+              <td class="num">{{ stats.n_uncertain }}</td>
+              <td class="num">{{ est_pass }}%</td>
+            </tr>
+            {% endfor %}
+            {% if not sha_stats %}
+            <tr><td colspan="6" class="dim">No runs recorded yet.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       §3  TREND — is the target getting more/less resilient over time?
+       ==================================================================== -->
+  <section class="section" id="trend">
+    <h2 class="section-heading"><span class="section-number">3</span>Resilience Trend — Over Target SHAs</h2>
+    <div class="card">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+        Estimated pass-rate per target SHA over time (earliest → latest).
+        A rising pass-rate means the target is becoming more resilient.
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Target SHA</th>
+              <th>First Run</th>
+              <th class="num">Attacks</th>
+              <th class="num">Est. Pass-rate</th>
+              <th>Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in trend_series %}
+            <tr>
+              <td><code>{{ entry.sha[:12] if entry.sha|length > 12 else entry.sha }}</code></td>
+              <td class="muted">{{ entry.first_run }}</td>
+              <td class="num">{{ entry.n_attacks }}</td>
+              <td class="num">{{ entry.pass_rate }}%</td>
+              <td>
+                {% if entry.trend == 'up' %}<span class="trend-up" title="More resilient than previous SHA">&#8593; improving</span>
+                {% elif entry.trend == 'down' %}<span class="trend-down" title="Less resilient than previous SHA">&#8595; regressing</span>
+                {% elif entry.trend == 'flat' %}<span class="trend-flat" title="No change vs previous SHA">&#8594; stable</span>
+                {% else %}<span class="trend-flat">— baseline</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not trend_series %}
+            <tr><td colspan="5" class="dim">No run data to compute a trend yet.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       §4  FINDINGS — open / in-progress / resolved / lead / regression
+       ==================================================================== -->
+  <section class="section" id="findings">
+    <h2 class="section-heading"><span class="section-number">4</span>Findings — Open / In-Progress / Resolved / Lead / Regression</h2>
+
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="label">Critical (open)</div>
+        <div class="value" style="color: var(--critical);">{{ open_findings.get('critical', 0) }}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">High (open)</div>
+        <div class="value" style="color: var(--high);">{{ open_findings.get('high', 0) }}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Medium (open)</div>
+        <div class="value" style="color: var(--medium);">{{ open_findings.get('medium', 0) }}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Leads (open)</div>
+        <div class="value" style="color: var(--lead-col);">{{ open_findings.get('lead', 0) }}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+        Open/in-progress/regression findings by severity.
+        <!-- TODO: extend db.py with a full status-breakdown query (open/in_progress/resolved/lead/regression)
+             so we can show resolved and regression counts here without guessing. -->
+        Resolved and regression counts require a full status query not yet exposed by
+        <code>Database</code> — add <code>findings_status_summary()</code> in a future db.py update.
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Severity</th>
+              <th class="num">Open / In-Progress / Regression</th>
+              <th>Severity label</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sev in ['critical', 'high', 'medium', 'lead'] %}
+            {% set n = open_findings.get(sev, 0) %}
+            <tr>
+              <td><span class="badge badge-{{ sev }}">{{ sev }}</span></td>
+              <td class="num">{{ n }}</td>
+              <td class="muted">
+                {% if sev == 'critical' %}Invariant confirmed violated, critical clinical impact
+                {% elif sev == 'high' %}Confirmed finding, significant risk
+                {% elif sev == 'medium' %}Confirmed finding, moderate risk
+                {% elif sev == 'lead' %}Surfaced for human triage — not yet confirmed
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       §5  COST — total + per-run table + projected-at-scale
+       ==================================================================== -->
+  <section class="section" id="cost">
+    <h2 class="section-heading"><span class="section-number">5</span>Cost — Total, Per-Run, and Projected at Scale</h2>
+
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="label">Total cost (all runs)</div>
+        <div class="value" style="color: var(--accent);">${{ "%.4f"|format(total_cost) }}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Runs recorded</div>
+        <div class="value">{{ recent_runs | length }}</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Avg cost / run</div>
+        <div class="value">
+          ${{ "%.4f"|format(avg_cost_per_run) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-run cost table -->
+    <div class="card">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+        Recent runs — cost breakdown (most recent first)
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Run ID</th>
+              <th>Started</th>
+              <th>SHA</th>
+              <th class="num">Attacks</th>
+              <th class="num">Findings</th>
+              <th class="num">Cost (USD)</th>
+              <th>Halted reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for run in recent_runs %}
+            <tr>
+              <td><code>{{ run.id[:8] if run.id|length > 8 else run.id }}</code></td>
+              <td class="muted">{{ run.started_at[:19] if run.started_at else '—' }}</td>
+              <td><code>{{ run.target_sha[:8] if run.target_sha|length > 8 else run.target_sha }}</code></td>
+              <td class="num">{{ run.n_attacks }}</td>
+              <td class="num">{{ run.n_confirmed_findings }}</td>
+              <td class="num">${{ "%.4f"|format(run.total_cost_usd) }}</td>
+              <td class="muted">{{ run.halted_reason or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not recent_runs %}
+            <tr><td colspan="7" class="dim">No runs recorded yet.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Projected at scale -->
+    <div class="card" style="margin-top: 14px;">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
+        Projected cost at scale — <em>these are projections, not measured figures</em>.
+        Methodology: measured per-run cost from the table above is used as the ~100-run
+        baseline. At 1K runs a caching + deduplication layer reduces marginal cost;
+        at 10K runs a bandit-over-cached-templates strategy means the LLM is invoked
+        only for novel signal (~5% of runs); at 100K the architecture shifts to worker
+        parallelism + a message bus (roadmap). See ARCHITECTURE.md §"Orchestration strategy at scale".
+        These projections are <strong>not</strong> cost-per-token × n.
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Scale</th>
+              <th>Strategy</th>
+              <th class="num">Projected total cost</th>
+              <th class="num">Projected cost / run</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>~100 runs <span class="badge badge-ok">measured baseline</span></td>
+              <td class="muted">Full model set, no caching</td>
+              <td class="num">${{ "%.2f"|format(proj_100) }}</td>
+              <td class="num">${{ "%.4f"|format(avg_cost_per_run) }}</td>
+            </tr>
+            <tr>
+              <td>~1K runs</td>
+              <td class="muted">+ caching + dedup (embed-similarity gate)</td>
+              <td class="num">~${{ "%.0f"|format(proj_1k) }}</td>
+              <td class="num">~${{ "%.4f"|format(proj_1k / 1000) }}</td>
+            </tr>
+            <tr>
+              <td>~10K runs</td>
+              <td class="muted">Bandit over cached templates; LLM only on novel signal (~5%)</td>
+              <td class="num">~${{ "%.0f"|format(proj_10k) }}</td>
+              <td class="num">~${{ "%.5f"|format(proj_10k / 10000) }}</td>
+            </tr>
+            <tr>
+              <td>~100K runs</td>
+              <td class="muted">Bandit + template library; LLM mutation &lt;5%; worker parallelism (roadmap)</td>
+              <td class="num">~${{ "%.0f"|format(proj_100k) }}</td>
+              <td class="num">~${{ "%.5f"|format(proj_100k / 100000) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       §6  ACTIVITY TIMELINE — recent runs as a per-agent timeline
+       ==================================================================== -->
+  <section class="section" id="timeline">
+    <h2 class="section-heading"><span class="section-number">6</span>Per-Agent Activity Timeline</h2>
+    <div class="card">
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
+        Recent runs in reverse-chronological order. Each row shows the Orchestrator directive,
+        target SHA, categories attacked, attack/finding counts, and halt reason.
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Started</th>
+              <th>Orchestrator directive</th>
+              <th>Categories targeted</th>
+              <th class="num">Attacks</th>
+              <th class="num">Findings</th>
+              <th>Halt reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for run in recent_runs %}
+            <tr>
+              <td class="muted" style="white-space: nowrap;">{{ run.started_at[:19] if run.started_at else '—' }}</td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="{{ run.orchestrator_directive }}">
+                {{ run.orchestrator_directive | truncate(80) }}
+              </td>
+              <td>
+                {% set cats = run.categories_targeted %}
+                {% if cats is string %}
+                  {% set cats = cats | from_json %}
+                {% endif %}
+                {% for cat in (cats or []) %}
+                <code style="font-size: 0.75em; margin-right: 3px;">{{ cat }}</code>
+                {% else %}
+                <span class="dim">—</span>
+                {% endfor %}
+              </td>
+              <td class="num">{{ run.n_attacks }}</td>
+              <td class="num">{{ run.n_confirmed_findings }}</td>
+              <td class="muted">{{ run.halted_reason or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not recent_runs %}
+            <tr><td colspan="6" class="dim">No runs recorded yet.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       FOOTER
+       ==================================================================== -->
+  <footer class="footer">
+    <div>
+      AgentForge &nbsp;·&nbsp; rendered {{ rendered_at }} &nbsp;·&nbsp;
+      Source: <a href="https://github.com/Hvoegeli/agentforge">Hvoegeli/agentforge</a>
+    </div>
+    <div>
+      Judge measured agreement rate:
+      <!-- TODO: pull from a db/config field once the Judge corpus validation harness
+           has been run. See ARCHITECTURE.md §"Judge validation (the load-bearing artifact)". -->
+      <strong>{{ judge_agreement_rate }}</strong>
+      &nbsp;·&nbsp; Auth: HTTP basic auth (deploy concern, not render concern)
+    </div>
+  </footer>
+
+</div><!-- .wrapper -->
+</body>
+</html>
