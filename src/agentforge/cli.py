@@ -1,12 +1,12 @@
 """AgentForge CLI — drive the closed loop, replay regressions, validate the Judge,
-render the dashboard, and seed the known day-one findings.
+render the dashboard, and seed the known Co-Pilot findings.
 
     agentforge run --category C1 --max-attacks 5      # one campaign, end-to-end
     agentforge status                                  # summary of the findings DB
     agentforge replay --finding <id> --n 10            # regression replay of a finding's case
     agentforge validate-judge                          # corpus-validate the Judge
     agentforge dashboard --out dashboard.html          # render the static HTML dashboard
-    agentforge seed-findings                            # load the 3 known seeded findings + reports
+    agentforge seed-findings                            # load the known seeded Co-Pilot findings + reports
 
 The target host is taken from ``COPILOT_BASE_URL`` (and must be on the adapter's
 allowlist — AgentForge only attacks the authorised Co-Pilot); ``--target-url`` /
@@ -361,7 +361,7 @@ def seed_findings_cmd(
     db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB."),
     reports_dir: str = typer.Option("findings", "--reports-dir", help="Where vuln reports are written."),
 ) -> None:
-    """Load the three known day-one Co-Pilot findings into the DB and write their vuln reports."""
+    """Load the known Co-Pilot findings (4 day-one + 2 from the 2026-05-12 review) into the DB and write their vuln reports."""
     _setup_logging()
     from agentforge.known_findings import seed_known_findings
 

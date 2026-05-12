@@ -30,7 +30,7 @@ def test_seed_findings_then_status_then_dashboard(tmp_path: Path) -> None:
     assert r.exit_code == 0, r.output
     assert "seeded finding" in r.stdout
     assert db.exists()
-    assert len(list(reports.glob("*.md"))) == 2  # two HIGH filed, one CRITICAL draft
+    assert len(list(reports.glob("*.md"))) == 4  # 4 HIGH filed; 2 CRITICAL go to reports/drafts/
 
     r = runner.invoke(app, ["status", "--db", str(db)])
     assert r.exit_code == 0
@@ -75,7 +75,7 @@ def test_regression_suite_empty_then_populated(tmp_path: Path) -> None:
     r = runner.invoke(app, ["regression-suite", "--db", str(db)])
     assert r.exit_code == 0
     assert "empty" in r.stdout.lower()
-    # seed the 3 known findings (their cases are in_regression_suite=1), then the suite is
+    # seed the known findings (their cases are in_regression_suite=1), then the suite is
     # non-empty — but the target is unreachable, so it exits 2 before replaying.
     runner.invoke(app, ["seed-findings", "--db", str(db), "--reports-dir", str(tmp_path / "rep")])
     r = runner.invoke(app, ["regression-suite", "--db", str(db), "--target-url", "http://127.0.0.1:1"])
