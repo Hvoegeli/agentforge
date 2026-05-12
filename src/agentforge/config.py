@@ -35,12 +35,28 @@ def _float(key: str, default: float) -> float:
 
 
 # Hosts AgentForge is permitted to attack. The Target Adapter refuses to
-# construct against anything not on this list — the "no third-party targets"
-# guarantee. (localhost / 127.0.0.1 for the dev docker stack; the Hetzner box
-# for the Final-Fri target.)
+# construct against anything not on this list (or matching an allowed suffix
+# below) — the "no third-party targets" guarantee. (localhost / 127.0.0.1 for the
+# dev docker stack; the Hetzner box for the deployed target.)
 ALLOWED_TARGET_HOSTS: frozenset[str] = frozenset(
     {"localhost", "127.0.0.1", "0.0.0.0", "host.docker.internal", "178.156.242.153"}
 )
+# Domain suffixes that are also permitted. The deployed Co-Pilot is exposed over a
+# Cloudflare quick tunnel (`*.trycloudflare.com`), whose subdomain rotates on every
+# `cloudflared` restart, so we allow the suffix rather than pinning an ephemeral
+# host. This stays within "no third-party targets" in spirit: the tunnel operator
+# (us) controls which trycloudflare URL is live, and `COPILOT_BASE_URL` /
+# `--target-url` remains the only way to point the adapter at anything.
+ALLOWED_TARGET_HOST_SUFFIXES: frozenset[str] = frozenset({"trycloudflare.com"})
+
+
+def is_allowed_target_host(host: str | None) -> bool:
+    """True if *host* is an explicitly-allowed target host, or a sub-host of one of
+    the allowed suffix domains (e.g. ``*.trycloudflare.com``)."""
+    host = (host or "").lower()
+    if host in ALLOWED_TARGET_HOSTS:
+        return True
+    return any(host == suffix or host.endswith("." + suffix) for suffix in ALLOWED_TARGET_HOST_SUFFIXES)
 
 
 @dataclass(frozen=True, slots=True)

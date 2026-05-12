@@ -3,7 +3,9 @@
 Guarantees enforced here (the "responsible testing posture" from THREAT_MODEL.md §8):
 
 * **Allowlist** — refuses to construct against any host not in
-  ``config.ALLOWED_TARGET_HOSTS``. No third-party targets, ever.
+  ``config.ALLOWED_TARGET_HOSTS`` (or matching ``config.ALLOWED_TARGET_HOST_SUFFIXES``,
+  e.g. the ``*.trycloudflare.com`` quick tunnel the deployed Co-Pilot is exposed
+  through). No third-party targets, ever.
 * **Rate cap** — at most ``RATE_LIMIT_RPM`` requests/minute against the target
   (the Co-Pilot box is ~3.7 GB RAM; we don't take down our own demo and we don't
   trip provider abuse-detection).
@@ -43,7 +45,13 @@ from urllib.parse import urlparse
 import httpx
 
 from agentforge.attacks.red_team import context_from_case
-from agentforge.config import ALLOWED_TARGET_HOSTS, Settings, get_settings
+from agentforge.config import (
+    ALLOWED_TARGET_HOST_SUFFIXES,
+    ALLOWED_TARGET_HOSTS,
+    Settings,
+    get_settings,
+    is_allowed_target_host,
+)
 from agentforge.models import AttackAttempt, AttackCase, ToolCallTrace
 
 logger = logging.getLogger("agentforge.target.adapter")
@@ -170,10 +178,11 @@ class TargetAdapter:
 
     def __post_init__(self) -> None:
         host = (urlparse(self.base_url).hostname or "").lower()
-        if host not in ALLOWED_TARGET_HOSTS:
+        if not is_allowed_target_host(host):
             raise TargetNotAllowedError(
                 f"refusing to attack '{host}' — not in ALLOWED_TARGET_HOSTS "
-                f"({sorted(ALLOWED_TARGET_HOSTS)}). AgentForge only attacks the authorised Co-Pilot target."
+                f"({sorted(ALLOWED_TARGET_HOSTS)}) and not under an allowed suffix "
+                f"({sorted(ALLOWED_TARGET_HOST_SUFFIXES)}). AgentForge only attacks the authorised Co-Pilot target."
             )
         self._client = httpx.Client(
             base_url=self.base_url.rstrip("/"), timeout=self.timeout_single_turn

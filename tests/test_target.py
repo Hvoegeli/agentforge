@@ -83,3 +83,15 @@ class TestAllowlist:
     def test_accepts_127_0_0_1(self) -> None:
         a = TargetAdapter(base_url="http://127.0.0.1:8300")
         a.close()
+
+    def test_accepts_trycloudflare_quick_tunnel(self) -> None:
+        # the deployed Co-Pilot is exposed via a *.trycloudflare.com quick tunnel
+        # (the subdomain rotates on every cloudflared restart) — allowed by suffix.
+        a = TargetAdapter(base_url="https://hansen-rat-ages-rim.trycloudflare.com")
+        assert a.base_url == "https://hansen-rat-ages-rim.trycloudflare.com"
+        a.close()
+
+    def test_rejects_trycloudflare_lookalike(self) -> None:
+        # a bare-suffix lookalike must NOT slip through the endswith check
+        with pytest.raises(TargetNotAllowedError):
+            TargetAdapter(base_url="https://nottrycloudflare.com")
