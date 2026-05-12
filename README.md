@@ -53,6 +53,7 @@ agentforge/
 ├── presearch.md              (planning doc — constraints, decisions, open questions)
 ├── dashboard.html            (rendered observability dashboard — static, self-contained)
 ├── deploy-dashboard.sh       (regenerate the dashboard from a live run + scp it to the box)
+├── reports/                  (the 6 generated vulnerability reports — 4 HIGH filed; 2 CRITICAL held as drafts under reports/drafts/)
 ├── evals/
 │   ├── success_criteria.md   (the invariant table — the Judge's spec)
 │   ├── judge_corpus/         (labeled ground-truth transcripts — the Judge validation set)
