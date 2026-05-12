@@ -23,6 +23,8 @@ dependencies = [
     "sqlite-utils>=3.37.0",
     # Dashboard (FastAPI is overkill for a static-render dashboard; revisit)
     "jinja2>=3.1.0",
+    # Render a text payload to a PNG for the upload-doc (indirect-via-image) attack
+    "pillow>=10.0",
     # Misc
     "rich>=13.0.0",  # nicer CLI output
     "typer>=0.12.0", # CLI entrypoint

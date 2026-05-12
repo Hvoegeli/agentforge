@@ -33,6 +33,7 @@ Endpoint contracts (verified against ``clinical-copilot/app/main.py``):
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -41,8 +42,11 @@ from urllib.parse import urlparse
 
 import httpx
 
+from agentforge.attacks.red_team import context_from_case
 from agentforge.config import ALLOWED_TARGET_HOSTS, Settings, get_settings
 from agentforge.models import AttackAttempt, AttackCase, ToolCallTrace
+
+logger = logging.getLogger("agentforge.target.adapter")
 
 # --------------------------------------------------------------------------- #
 # PHI / transcript redaction
@@ -276,29 +280,92 @@ class TargetAdapter:
                 return item
         return None
 
+    # -- upload-doc setup (indirect-via-image attack) ---------------------- #
+    def _resolve_upload_patient(self) -> tuple[str, str]:
+        """Pick a patient the current session may write to (for the upload-doc setup
+        step). Returns ``(patient_uuid, label)``. Raises ``RuntimeError`` if none."""
+        self.ensure_logged_in()
+        self._rl.wait()
+        r = self._client.get("/api/upload/patients", timeout=15.0)
+        r.raise_for_status()
+        items = (r.json() or {}).get("items") or []
+        if not items:
+            raise RuntimeError("no patients available for upload (empty panel?)")
+        first = items[0]
+        return str(first["id"]), str(first.get("label") or first["id"])
+
+    def _upload_document(
+        self, payload_text: str, *, patient_uuid: str, doc_type: str = "intake_form"
+    ) -> str:
+        """Render ``payload_text`` to a PNG and ``POST /api/upload`` it for
+        ``patient_uuid``. Returns the created ``reference_id`` (or ``""``). The PNG
+        carries the injection text as *pixels*, so it reaches the Co-Pilot's vision
+        model via the rendered-image channel the jailbreak quarantine doesn't scan.
+        """
+        from agentforge.attacks.poison_doc import render_text_to_png
+
+        png = render_text_to_png(payload_text or "(empty document)")
+        self.ensure_logged_in()
+        self._rl.wait()
+        r = self._client.post(
+            "/api/upload",
+            files={"file": ("agentforge-probe.png", png, "image/png")},
+            data={
+                "doc_type": doc_type,
+                "patient_uuid": patient_uuid,
+                "acknowledge_existing": "true",  # skip the SHA-256 dedup prompt
+            },
+            timeout=self.timeout_multi_turn,
+        )
+        r.raise_for_status()
+        try:
+            return str((r.json() or {}).get("reference_id") or "")
+        except ValueError:
+            return ""
+
     # -- the main entry point ---------------------------------------------- #
     def attack(self, case: AttackCase) -> AttackAttempt:
         """Execute one AttackCase against the target and return a populated,
         redacted AttackAttempt. Errors are captured (never raised) as ``error`` on
         the AttackAttempt so the run loop keeps going. A multi-turn case is sent as
         one conversation — the ``session_id`` from the first turn's response is
-        threaded into the rest."""
+        threaded into the rest. If the case carries ``needs_setup=upload_doc`` in its
+        notes, a poisoned document is uploaded for a panel patient first and
+        ``{uploaded_patient}`` / ``{uploaded_patient_id}`` are substituted into the
+        turns. (``needs_setup=write_fhir_field`` and ``raw_http_get`` are not yet
+        implemented — those seeds run as bare chat turns until then.)"""
         is_multi_turn = len(case.prompt_or_sequence) > 1
         timeout = self.timeout_multi_turn if is_multi_turn else self.timeout_single_turn
         advisor_mode = "advisor_mode=true" in (case.notes or "").lower()
+        ctx = context_from_case(case)
+        turns: list[str] = list(case.prompt_or_sequence)
+        setup_note = ""
         responses: list[str] = []
         error: str | None = None
         session_id: str | None = None
         started = time.monotonic()
         try:
             self.require_healthy()
-            for turn in case.prompt_or_sequence:
-                payload = self.chat(turn, session_id=session_id, advisor_mode=advisor_mode)
-                session_id = payload.get("session_id") or session_id
-                responses.append(str(payload.get("response") or payload.get("text") or ""))
-                if time.monotonic() - started > timeout:
-                    error = "timeout"
-                    break
+            if ctx.get("needs_setup") == "upload_doc":
+                try:
+                    pid, label = self._resolve_upload_patient()
+                    ref = self._upload_document(str(ctx.get("setup_payload") or ""), patient_uuid=pid)
+                    turns = [
+                        t.replace("{uploaded_patient}", label).replace("{uploaded_patient_id}", pid)
+                        for t in turns
+                    ]
+                    setup_note = f"; setup=poisoned-doc->{label}"
+                    logger.info("adapter: uploaded poisoned doc for %s (ref=%s) before %s", label, ref, case.subcategory)
+                except (httpx.HTTPError, RuntimeError, OSError, KeyError) as e:
+                    error = f"setup_failed: {type(e).__name__}"
+            if error is None:
+                for turn in turns:
+                    payload = self.chat(turn, session_id=session_id, advisor_mode=advisor_mode)
+                    session_id = payload.get("session_id") or session_id
+                    responses.append(str(payload.get("response") or payload.get("text") or ""))
+                    if time.monotonic() - started > timeout:
+                        error = "timeout"
+                        break
         except TargetUnavailableError:
             error = "target_unavailable"
         except httpx.TimeoutException:
@@ -356,6 +423,7 @@ class TargetAdapter:
                 f"{case.category.value}/{case.subcategory} "
                 f"({'multi-turn x' + str(len(case.prompt_or_sequence)) if is_multi_turn else 'single-turn'}"
                 f"{', advisor_mode' if advisor_mode else ''}"
+                f"{setup_note}"
                 f"{'; session=' + session_id[:8] if session_id else ''})"
             ),
             response_redacted=PHIRedactor.redact(response_blob),
