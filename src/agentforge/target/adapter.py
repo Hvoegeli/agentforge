@@ -13,10 +13,22 @@ Guarantees enforced here (the "responsible testing posture" from THREAT_MODEL.md
 * **Transcript redaction** — every response is run through :class:`PHIRedactor`
   before it leaves this module (synthetic data today, HIPAA-safe pipeline tomorrow).
 
-NOTE: the exact request/response shapes of the Co-Pilot's ``/api/login``,
-``/chat`` and ``/api/traces`` endpoints are taken from the W1/W2 attack-surface
-map; the few places marked ``# TODO: verify vs the local docker stack`` should be
-confirmed against a running Co-Pilot during the C1 closed-loop build.
+Endpoint contracts (verified against ``clinical-copilot/app/main.py``):
+
+* ``POST /api/login`` — body ``{"username", "password"}`` → ``200 {"ok": true, "username"}``
+  on success, ``401`` on bad creds; sets a signed session cookie (Starlette
+  ``SessionMiddleware``) which ``httpx.Client`` persists across requests.
+* ``GET /healthz`` — ``200 {"status": "ok"}`` (no auth).
+* ``POST /chat`` — body ``{"session_id": str|null, "message": str, "advisor_mode": bool}``
+  (requires the session cookie) → ``{"session_id", "response", "patient_id", "sources",
+  "validation_warning"}``. ``session_id`` is echoed back; reuse it for a multi-turn
+  conversation. (``/chat/stream`` is the SSE variant — not used here.)
+* ``GET /api/traces?limit=N`` — ``{"count", "items": [trace, ...]}``, newest-first;
+  each trace has ``request_id``, ``session_id``, ``tool_events`` (``name``/``args``/
+  ``ok``/``duration_ms``/``error``), ``total_usage`` (``input_tokens``/``output_tokens``/
+  ``cache_read_tokens``/``cache_creation_tokens``), ``cost_usd``, ``duration_ms``,
+  ``validator_attempts``/``validator_failed``, ``error``. (No ``route_count`` /
+  supervisor-hop field today — see :meth:`attack`.)
 """
 
 from __future__ import annotations
@@ -188,17 +200,15 @@ class TargetAdapter:
 
     # -- auth --------------------------------------------------------------- #
     def login(self) -> None:
-        """Authenticate against the Co-Pilot's session model (OpenEMR password
-        grant under the hood). Use a dedicated test account — never a real
-        clinician account."""
+        """Authenticate against the Co-Pilot (``POST /api/login`` — credentials are
+        verified against OpenEMR server-side; a signed session cookie is set, which
+        ``httpx.Client`` persists for us). Use a dedicated test account — never a
+        real clinician account."""
         self._rl.wait()
-        # TODO: verify the request shape vs the local docker stack — the W1/W2 map
-        # has POST /api/login validating credentials via the OpenEMR password grant
-        # and setting a server-side session cookie.
         r = self._client.post(
             "/api/login", json={"username": self.username, "password": self.password}
         )
-        r.raise_for_status()
+        r.raise_for_status()  # 401 → bad creds
         self._session_active = True
 
     def ensure_logged_in(self) -> None:
@@ -207,63 +217,85 @@ class TargetAdapter:
 
     # -- chat --------------------------------------------------------------- #
     def chat(
-        self, message: str, *, advisor_mode: bool = False, extra: dict[str, Any] | None = None
+        self,
+        message: str,
+        *,
+        session_id: str | None = None,
+        advisor_mode: bool = False,
+        extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """One atomic chat turn. Returns the raw response payload (parsed JSON if
-        possible, else ``{"text": <body>}``). Does NOT redact — callers that store
-        the result should run it through :meth:`PHIRedactor.redact` first; the
-        :meth:`attack` path does this for you."""
+        """One chat turn. Pass ``session_id`` (from a prior turn's response) to
+        continue a conversation; ``None`` starts a fresh one (the server allocates
+        an id and echoes it back). Returns the parsed ``ChatResponse`` JSON
+        (``{"session_id", "response", "patient_id", "sources", "validation_warning"}``).
+        Does NOT redact — the :meth:`attack` path does that for you. Re-logs-in once
+        on a 401 (the session cookie may have expired)."""
         self.ensure_logged_in()
-        self._rl.wait()
-        body: dict[str, Any] = {"message": message, "advisor_mode": advisor_mode}
+        body: dict[str, Any] = {
+            "message": message,
+            "advisor_mode": advisor_mode,
+            "session_id": session_id,
+        }
         if extra:
             body.update(extra)
-        # TODO: verify endpoint + body shape vs the local docker stack (POST /chat
-        # = "atomic chat turn, return response text"; /chat/stream is the SSE variant).
+        self._rl.wait()
         r = self._client.post("/chat", json=body, timeout=self.timeout_single_turn)
+        if r.status_code == 401:
+            # cookie expired / not yet established — re-auth and retry once
+            self._session_active = False
+            self.login()
+            self._rl.wait()
+            r = self._client.post("/chat", json=body, timeout=self.timeout_single_turn)
         r.raise_for_status()
         try:
             return r.json()
         except ValueError:
-            return {"text": r.text}
+            return {"session_id": session_id, "response": r.text}
 
-    def latest_trace(self) -> dict[str, Any] | None:
-        """Fetch the most recent request trace from /api/traces (same session).
-        Used to recover the target's tool-call trace, token usage, cost, and
-        supervisor-hop count after a chat turn."""
+    def latest_trace(self, session_id: str | None = None) -> dict[str, Any] | None:
+        """Fetch the newest ``/api/traces`` entry, optionally restricted to a
+        ``session_id``. ``/chat`` does not return its ``request_id``, so we match on
+        the session and take the newest (turns are sent strictly sequentially, so
+        the newest trace for our session is the turn we just sent — including the
+        jailbreak-guard / intent-router short-circuit traces, which also carry the
+        session id)."""
         try:
             self._rl.wait()
-            r = self._client.get("/api/traces", timeout=15.0)
+            r = self._client.get("/api/traces", params={"limit": 50}, timeout=15.0)
             r.raise_for_status()
             data = r.json()
-            traces = data if isinstance(data, list) else data.get("traces", [])
-            # TODO: match by request_id if /chat returns one; for now take the newest.
-            return traces[0] if traces else None
-        except (httpx.HTTPError, ValueError, IndexError):
+            items = data.get("items", []) if isinstance(data, dict) else (data or [])
+        except (httpx.HTTPError, ValueError):
             return None
+        if not items:
+            return None
+        if session_id is None:
+            return items[0]  # newest overall
+        for item in items:  # newest-first
+            if isinstance(item, dict) and item.get("session_id") == session_id:
+                return item
+        return None
 
     # -- the main entry point ---------------------------------------------- #
     def attack(self, case: AttackCase) -> AttackAttempt:
         """Execute one AttackCase against the target and return a populated,
-        redacted AttackAttempt. Errors are captured (never raised) as
-        ``error`` on the AttackAttempt so the run loop keeps going."""
+        redacted AttackAttempt. Errors are captured (never raised) as ``error`` on
+        the AttackAttempt so the run loop keeps going. A multi-turn case is sent as
+        one conversation — the ``session_id`` from the first turn's response is
+        threaded into the rest."""
         is_multi_turn = len(case.prompt_or_sequence) > 1
         timeout = self.timeout_multi_turn if is_multi_turn else self.timeout_single_turn
+        advisor_mode = "advisor_mode=true" in (case.notes or "").lower()
         responses: list[str] = []
         error: str | None = None
+        session_id: str | None = None
         started = time.monotonic()
         try:
             self.require_healthy()
             for turn in case.prompt_or_sequence:
-                payload = self.chat(turn, advisor_mode=False)
-                # Co-Pilot may return {"response": ...} or {"text": ...} or a bare string-ish JSON
-                text = (
-                    payload.get("response")
-                    or payload.get("text")
-                    or payload.get("answer")
-                    or str(payload)
-                )
-                responses.append(text)
+                payload = self.chat(turn, session_id=session_id, advisor_mode=advisor_mode)
+                session_id = payload.get("session_id") or session_id
+                responses.append(str(payload.get("response") or payload.get("text") or ""))
                 if time.monotonic() - started > timeout:
                     error = "timeout"
                     break
@@ -273,21 +305,23 @@ class TargetAdapter:
             error = "timeout"
         except httpx.HTTPError as e:
             error = f"http_error: {type(e).__name__}"
-        latency_ms = (time.monotonic() - started) * 1000.0
 
-        # recover the trace (best-effort)
+        # recover the trace (best-effort — even on a timeout the partial trace is useful)
         tool_trace: list[ToolCallTrace] = []
         token_usage: dict[str, int] = {}
         cost_usd = 0.0
         n_hops: int | None = None
-        trace = self.latest_trace() if error is None else None
+        trace = self.latest_trace(session_id) if error != "target_unavailable" else None
         if trace:
             for ev in trace.get("tool_events", []) or []:
+                if not isinstance(ev, dict):
+                    continue
                 tool_trace.append(
                     ToolCallTrace(
                         name=str(ev.get("name", "")),
                         args_redacted={
-                            k: PHIRedactor.redact(str(v)) for k, v in (ev.get("args") or {}).items()
+                            str(k): PHIRedactor.redact(str(v))
+                            for k, v in (ev.get("args") or {}).items()
                         },
                         ok=bool(ev.get("ok", True)),
                         latency_ms=ev.get("duration_ms"),
@@ -296,18 +330,34 @@ class TargetAdapter:
                 )
             usage = trace.get("total_usage") or {}
             if isinstance(usage, dict):
-                token_usage = {k: int(v) for k, v in usage.items() if isinstance(v, int | float)}
+                token_usage = {
+                    str(k): int(v) for k, v in usage.items() if isinstance(v, int | float)
+                }
             cost_usd = float(trace.get("cost_usd", 0.0) or 0.0)
-            # supervisor hop count: count tool_events / or a dedicated field if present
-            n_hops = trace.get("supervisor_routes") or trace.get("route_count")
+            # NOTE: RequestTrace.to_dict() doesn't surface the supervisor-loop
+            # `route_count` (it lives on AgentState, not the trace) — so hops stay
+            # None for now. Ask the Co-Pilot maintainer to add it; the C4/C5 checkers
+            # already treat n_supervisor_hops=None as "not checkable".
+            n_hops = trace.get("route_count") or trace.get("supervisor_routes")
+
+        # latency: prefer the target's own measured turn latency when we have a
+        # single-turn trace; otherwise the wall-clock around our request(s).
+        if trace and not is_multi_turn and isinstance(trace.get("duration_ms"), int | float):
+            latency_ms = float(trace["duration_ms"])
+        else:
+            latency_ms = (time.monotonic() - started) * 1000.0
 
         response_blob = "\n---\n".join(responses)
         return AttackAttempt(
             attack_case_id=case.id,
             target_sha=self.target_sha,
             target_base_url=self.base_url,
-            request_summary=f"{case.category.value}/{case.subcategory} "
-            f"({'multi-turn x' + str(len(case.prompt_or_sequence)) if is_multi_turn else 'single-turn'})",
+            request_summary=(
+                f"{case.category.value}/{case.subcategory} "
+                f"({'multi-turn x' + str(len(case.prompt_or_sequence)) if is_multi_turn else 'single-turn'}"
+                f"{', advisor_mode' if advisor_mode else ''}"
+                f"{'; session=' + session_id[:8] if session_id else ''})"
+            ),
             response_redacted=PHIRedactor.redact(response_blob),
             tool_trace=tool_trace,
             token_usage=token_usage,
