@@ -280,6 +280,23 @@ class TargetAdapter:
                 return item
         return None
 
+    # -- panel introspection ------------------------------------------------ #
+    def resolved_panel(self) -> set[str]:
+        """Return the FHIR Patient UUIDs the current session is scoped to (its
+        panel) — by reading ``/api/upload/patients``, which the Co-Pilot filters to
+        the user's panel (admins get every patient). Returns ``set()`` on any error.
+        Used by the run loop to give the C2/C4 checkers the authorized-panel context.
+        """
+        try:
+            self.ensure_logged_in()
+            self._rl.wait()
+            r = self._client.get("/api/upload/patients", timeout=15.0)
+            r.raise_for_status()
+            items = (r.json() or {}).get("items") or []
+        except (httpx.HTTPError, ValueError):
+            return set()
+        return {str(i["id"]) for i in items if isinstance(i, dict) and i.get("id")}
+
     # -- upload-doc setup (indirect-via-image attack) ---------------------- #
     def _resolve_upload_patient(self) -> tuple[str, str]:
         """Pick a patient the current session may write to (for the upload-doc setup

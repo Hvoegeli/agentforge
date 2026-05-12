@@ -121,6 +121,9 @@ def version() -> None:
     console.print(f"agentforge {__version__}")
 
 
+_PANEL_RELEVANT = {"data_exfiltration", "tool_misuse", "identity_role"}  # C2 / C4 / C6
+
+
 @app.command()
 def run(
     category: str = typer.Option("C1", "--category", "-c", help="Threat category (C1..C6/B1..B3 or the value)."),
@@ -129,6 +132,7 @@ def run(
     single_turn_only: bool = typer.Option(False, "--single-turn-only", help="Skip multi-turn seeds."),
     mutate: bool = typer.Option(False, "--mutate", help="Mutate near-misses (deterministic mutators)."),
     external: bool = typer.Option(False, "--external", help="Also run the curated public-dataset attack corpus (attacks/external.py)."),
+    extra_sub: list[str] = typer.Option(None, "--extra-sub", help="Seed-template substitution, key=value (repeatable) — e.g. --extra-sub other_patient_name=Hale."),  # noqa: B008
     db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB (default from settings)."),
     reports_dir: str = typer.Option("findings", "--reports-dir", help="Where vuln reports are written."),
     target_url: str | None = typer.Option(None, "--target-url", help="Override the target base URL for this run."),
@@ -139,9 +143,30 @@ def run(
     from agentforge.orchestrator import Orchestrator
 
     cat = _parse_category(category)
+    subs: dict[str, str] = {}
+    for kv in extra_sub or []:
+        if "=" not in kv:
+            raise typer.BadParameter(f"--extra-sub expects key=value, got {kv!r}")
+        k, v = kv.split("=", 1)
+        subs[k.strip()] = v
     db = _open_db(db_path)
     adapter = _build_adapter(target_url, target_sha)
     try:
+        # For panel-scoped categories, hand the Judge the session's authorized panel
+        # (so the C2/C4 checkers can do the set-membership check) — best-effort.
+        judge_context: dict = {}
+        if cat.value in _PANEL_RELEVANT:
+            get_panel = getattr(adapter, "resolved_panel", None)
+            if callable(get_panel):
+                try:
+                    panel = get_panel()
+                except Exception:
+                    panel = set()
+                if panel:
+                    judge_context["authorized_patient_ids"] = list(panel)
+                    judge_context["allowed_patient_ids"] = list(panel)
+                    console.print(f"[dim]session panel: {len(panel)} patient(s)[/dim]")
+
         orch = Orchestrator()
         campaign = orch.pick_campaign(
             category=cat,
@@ -150,6 +175,8 @@ def run(
             include_multi_turn=not single_turn_only,
             mutate_near_misses=mutate,
             include_external_attacks=external,
+            extra_subs=subs,
+            judge_context=judge_context,
             reports_dir=reports_dir,
         )
         console.print(f"[bold]Campaign:[/bold] {campaign.directive}")
