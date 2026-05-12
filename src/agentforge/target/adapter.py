@@ -400,9 +400,18 @@ class TargetAdapter:
             for ev in trace.get("tool_events", []) or []:
                 if not isinstance(ev, dict):
                     continue
+                name = str(ev.get("name", ""))
+                # `supervisor.route` (and any other `supervisor.*`) is an internal
+                # routing-decision event the Co-Pilot records in tool_events — not a
+                # tool invocation. It appears in every trace; the supervisor-hop count
+                # is captured separately as n_supervisor_hops. Drop it so it doesn't
+                # show up as an "out-of-binding tool" to the C4 checker (false positive)
+                # or clutter the vuln-report tool-trace table.
+                if name.startswith("supervisor."):
+                    continue
                 tool_trace.append(
                     ToolCallTrace(
-                        name=str(ev.get("name", "")),
+                        name=name,
                         args_redacted={
                             str(k): PHIRedactor.redact(str(v))
                             for k, v in (ev.get("args") or {}).items()

@@ -63,9 +63,10 @@ KNOWN_COPILOT_TOOLS: frozenset[str] = frozenset(
         "clinical_flags",
         "get_document_content",
         "retrieve_guidelines",
-        # NOTE: the Co-Pilot is documented as having 10 tools; one name is not yet
-        # confirmed here. A campaign that knows the full list should pass it via
-        # ``default_context["allowed_tools"]``.
+        "current_time",  # the 10th tool — R4: dates come from current_time
+        # ``supervisor.route`` is NOT a tool — it's an internal routing-decision
+        # event; the Target Adapter strips ``supervisor.*`` from the tool trace
+        # before it reaches the checkers.
     }
 )
 
