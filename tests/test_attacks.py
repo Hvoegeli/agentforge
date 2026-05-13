@@ -48,6 +48,32 @@ class TestSeedCorpus:
         assert any("indirect" in s for s in subs)
         assert any(len(s["turns"]) > 1 for s in c1)
 
+    def test_all_nine_categories_have_a_seed_floor(self) -> None:
+        # Every ThreatCategory must have at least one seed so a campaign on it
+        # produces real attacks (and the dashboard shows it exercised).
+        for cat in ThreatCategory:
+            assert SEEDS_BY_CATEGORY.get(cat.value), f"{cat.value} has no seed floor"
+
+    def test_every_seed_invariant_is_registered(self) -> None:
+        from agentforge.invariants import INVARIANT_CHECKERS
+
+        for cat, seeds in SEEDS_BY_CATEGORY.items():
+            for seed in seeds:
+                assert seed["invariant_id"] in INVARIANT_CHECKERS, (
+                    f"{cat}/{seed['subcategory']} → unregistered invariant {seed['invariant_id']!r}"
+                )
+
+    def test_new_categories_use_expected_invariants(self) -> None:
+        expected = {
+            "state_corruption": "C3.provenance",
+            "misinformation": "B1.zero-citation",
+            "improper_output": "B2.improper-output",
+            "system_prompt_leakage": "B3.system-prompt-leakage",
+        }
+        for cat, inv_id in expected.items():
+            ids = {s["invariant_id"] for s in SEEDS_BY_CATEGORY[cat]}
+            assert ids == {inv_id}, f"{cat}: {ids}"
+
 
 class TestRedTeamGenerate:
     def test_generates_valid_attack_cases_with_canaries(self) -> None:

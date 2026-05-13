@@ -2,8 +2,16 @@
 #
 # deploy-dashboard.sh — regenerate the AgentForge observability dashboard (+ the
 # RESILIENCE.md hand-off doc) from the findings DB (seeded known findings + a fresh
-# C1 floor against the live deployed Co-Pilot) and copy them to the box that serves
-# the dashboard at its own public URL — separate from the OpenEMR / Co-Pilot URLs.
+# floor across ALL NINE attack categories against the live deployed Co-Pilot) and
+# copy them to the box that serves the dashboard at its own public URL — separate
+# from the OpenEMR / Co-Pilot URLs.
+#
+# Each run is tagged on the dashboard with the environment it executed against
+# ("deployed instance" here; "local stack" for runs you do against a local dev
+# Co-Pilot). By default this script starts from a fresh DB (so `seed-findings`
+# stays idempotent); set AF_KEEP_DB=1 (and point AF_DB at the DB that holds your
+# local exploratory runs) to keep prior runs and have them appear, tagged
+# "local stack", alongside this deployed-instance sweep.
 #
 # The dashboard is a single self-contained HTML file; the box serves /opt/agentforge-dashboard/
 # over a plain static server fronted by a Cloudflare quick tunnel.
@@ -20,6 +28,11 @@
 #   $2 / AF_SSH_HOST       — ssh target for the box that serves the dashboard
 #                            (default: root@178.156.242.153)
 #   AF_TARGET_SHA          — recorded on the attempts (default: copilot@1055abd71)
+#   AF_CATEGORIES          — space-separated category list to sweep
+#                            (default: "C1 C2 C3 C4 C5 C6 B1 B2 B3" — all nine)
+#   AF_KEEP_DB             — set to 1 to NOT wipe AF_DB first (keeps prior runs, e.g.
+#                            local exploratory runs, so they appear on the dashboard
+#                            tagged "local stack"); default wipes for a fresh snapshot
 #   AF_DB / AF_OUT         — local scratch paths (the SQLite DB / the HTML out file)
 #   AF_REPORTS             — where the generated vuln reports go (default: ./reports —
 #                            committed alongside dashboard.html / RESILIENCE.md so the
@@ -75,15 +88,25 @@ if [[ -z "$TARGET_URL" ]]; then
   exit 2
 fi
 
-rm -f "$DB"; rm -rf "$REPORTS"
+# Categories to sweep, in the dashboard's C1..C6/B1..B3 order. Override with
+# AF_CATEGORIES="C1 C5 ..." to run a subset.
+CATEGORIES="${AF_CATEGORIES:-C1 C2 C3 C4 C5 C6 B1 B2 B3}"
+
+if [[ -z "${AF_KEEP_DB:-}" ]]; then
+  rm -f "$DB"
+fi
+rm -rf "$REPORTS"
 echo "==> seeding the known Co-Pilot findings"
 uv run agentforge seed-findings --db "$DB" --reports-dir "$REPORTS"
 
-echo "==> live C1 floor against the deployed target ($TARGET_URL)"
-# `agentforge run` exits 0 even if the target is unhealthy (attempts get marked
-# UNCERTAIN, not crashed), so this won't trip `set -e`.
-uv run agentforge run --category C1 --target-url "$TARGET_URL" --target-sha "$TARGET_SHA" \
-  --db "$DB" --reports-dir "$REPORTS"
+# `agentforge run` exits 0 even if the target is unhealthy (the campaign records
+# a run with 0 attacks / halted_reason=target_unavailable, it doesn't crash), so
+# the loop below won't trip `set -e`.
+for cat in $CATEGORIES; do
+  echo "==> live $cat floor against the deployed target ($TARGET_URL)"
+  uv run agentforge run --category "$cat" --target-url "$TARGET_URL" --target-sha "$TARGET_SHA" \
+    --db "$DB" --reports-dir "$REPORTS"
+done
 
 echo "==> rendering dashboard -> $OUT (+ RESILIENCE.md)"
 uv run agentforge dashboard --db "$DB" --out "$OUT" --resilience-md RESILIENCE.md

@@ -33,10 +33,11 @@ Public API::
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -72,6 +73,36 @@ def _report_rel(p: str | None) -> str | None:
 
 
 _env.filters["report_rel"] = _report_rel
+
+
+# --------------------------------------------------------------------------- #
+# Run environment — local dev stack vs the deployed instance, derived from the
+# run's recorded target_base_url. The dashboard tags each run with this so a
+# viewer never mistakes a local-stack run for one against the deployed Co-Pilot.
+# --------------------------------------------------------------------------- #
+_LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "host.docker.internal"})
+
+
+def _run_environment(base_url: str | None) -> tuple[str, str]:
+    """``(label, css_class)`` describing where a run executed, from its target URL.
+
+    ``localhost`` / ``127.0.0.1`` / ``*.local`` / a bare ``host:port`` → "local stack";
+    everything else (a public hostname, the ``*.trycloudflare.com`` quick tunnel the
+    deployed Co-Pilot is fronted by, a raw IP) → "deployed instance"; empty/unknown
+    → "(unknown)".
+    """
+    if not base_url:
+        return "(unknown)", "env-unknown"
+    host = (urlparse(base_url).hostname or base_url).strip().lower()
+    if not host:
+        return "(unknown)", "env-unknown"
+    if host in _LOCAL_HOSTS or host.endswith(".local") or host.endswith(".localhost"):
+        return "local stack", "env-local"
+    return "deployed instance", "env-deployed"
+
+
+_env.filters["run_env_label"] = lambda u: _run_environment(u)[0]
+_env.filters["run_env_class"] = lambda u: _run_environment(u)[1]
 
 
 # --------------------------------------------------------------------------- #
@@ -157,11 +188,17 @@ class _ShaStats:
     n_attacks: int = 0
     n_findings: int = 0
     n_uncertain: int = 0
+    environments: set[str] = field(default_factory=set)  # {"deployed instance", "local stack", …}
 
     @property
     def finding_rate(self) -> float:
         """Fraction of attacks that produced a confirmed finding (lower = more resilient)."""
         return self.n_findings / self.n_attacks if self.n_attacks > 0 else 0.0
+
+    @property
+    def env_label(self) -> str:
+        """A short human label for where this SHA's runs executed (joined if mixed)."""
+        return " + ".join(sorted(self.environments)) if self.environments else "(unknown)"
 
 
 @dataclass
@@ -190,6 +227,7 @@ def _build_sha_stats(runs: list[dict[str, Any]]) -> dict[str, _ShaStats]:
         s.n_attacks += run.get("n_attacks") or 0
         s.n_findings += run.get("n_confirmed_findings") or 0
         s.n_uncertain += run.get("n_uncertain") or 0
+        s.environments.add(_run_environment(run.get("target_base_url"))[0])
     return stats
 
 

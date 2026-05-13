@@ -391,3 +391,43 @@ class TestWriteDashboard:
         result = write_dashboard(db_path, out_path)
         assert isinstance(result, Path)
         assert result.exists()
+
+
+# --------------------------------------------------------------------------- #
+# Run environment labelling (local stack vs deployed instance)
+# --------------------------------------------------------------------------- #
+class TestRunEnvironment:
+    def test_run_environment_classification(self) -> None:
+        from agentforge.dashboard import _run_environment
+
+        assert _run_environment("http://localhost:7300")[0] == "local stack"
+        assert _run_environment("http://127.0.0.1:8000")[0] == "local stack"
+        assert _run_environment("http://copilot.local")[0] == "local stack"
+        assert _run_environment("https://hansen-rat-ages-rim.trycloudflare.com")[0] == "deployed instance"
+        assert _run_environment("https://copilot.example.com")[0] == "deployed instance"
+        assert _run_environment("")[0] == "(unknown)"
+        assert _run_environment(None)[0] == "(unknown)"
+
+    def test_dashboard_tags_local_run(self) -> None:
+        # The fixture's runs use http://localhost:7300 → "local stack".
+        with Database(":memory:") as db:
+            _populate_db(db)
+            html = render_dashboard(db)
+        assert "Environment" in html  # the new column header
+        assert "local stack" in html
+        assert "env-chip" in html
+
+    def test_dashboard_tags_deployed_run(self) -> None:
+        with Database(":memory:") as db:
+            db.insert(
+                RunRecord(
+                    orchestrator_directive="probe prompt_injection against the deployed Co-Pilot",
+                    categories_targeted=[ThreatCategory.PROMPT_INJECTION],
+                    target_sha="copilot@1055abd71",
+                    target_base_url="https://hansen-rat-ages-rim.trycloudflare.com",
+                    n_attacks=3,
+                    n_confirmed_findings=0,
+                )
+            )
+            html = render_dashboard(db)
+        assert "deployed instance" in html

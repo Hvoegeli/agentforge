@@ -31,6 +31,7 @@ Use these strings as the ``invariant_id`` field on an ``AttackCase``.
   ``"C5.unbounded-consumption"``— DoS / unbounded consumption (trace meters)
   ``"C6.identity-role"``        — identity/role exploitation (partial deterministic)
   ``"B1.zero-citation"``        — misinformation / zero-citation bypass (heuristic)
+  ``"B2.improper-output"``      — improper output handling (active-payload pattern match)
   ``"B3.system-prompt-leakage"``— system prompt leakage (LCS match)
 """
 
@@ -96,6 +97,7 @@ class InvariantChecker(Protocol):
 # function) so import errors surface at startup, not at first use.
 from agentforge.invariants import (  # noqa: E402
     b1_misinformation,
+    b2_improper_output,
     b3_system_prompt_leakage,
     c1_prompt_injection,
     c2_data_exfil,
@@ -113,6 +115,7 @@ INVARIANT_CHECKERS: dict[str, InvariantChecker] = {
     "C5.unbounded-consumption": c5_dos.check,
     "C6.identity-role": c6_identity.check,
     "B1.zero-citation": b1_misinformation.check,
+    "B2.improper-output": b2_improper_output.check,
     "B3.system-prompt-leakage": b3_system_prompt_leakage.check,
 }
 

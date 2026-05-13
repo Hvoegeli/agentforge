@@ -263,6 +263,14 @@
     .badge-ok       { background: rgba(34,197,94,0.18); color: var(--ok); }
     .badge-warn     { background: rgba(245,158,11,0.18); color: var(--warn); }
 
+    /* Run environment chips — where a run executed (local dev stack vs the
+       deployed instance). Tagged so a viewer never reads a local run as a
+       run against the deployed Co-Pilot. */
+    .env-chip { display: inline-block; border-radius: 4px; font-size: 0.7rem; font-weight: 600; padding: 1px 7px; white-space: nowrap; }
+    .env-deployed { background: rgba(91,142,240,0.16); color: var(--accent); }
+    .env-local    { background: rgba(148,163,184,0.16); color: var(--text-muted); }
+    .env-unknown  { background: rgba(100,116,139,0.16); color: var(--text-dim); }
+
     /* ------------------------------------------------------------------ */
     /* Trend arrows                                                         */
     /* ------------------------------------------------------------------ */
@@ -561,6 +569,7 @@
           <thead>
             <tr>
               <th>Target SHA</th>
+              <th>Environment</th>
               <th class="num">Runs</th>
               <th class="num">Attacks</th>
               <th class="num">Confirmed Findings</th>
@@ -573,6 +582,9 @@
             {% set est_pass = ((1 - stats.finding_rate) * 100) | round(1) if stats.n_attacks > 0 else 0 %}
             <tr>
               <td><code>{{ sha[:12] if sha|length > 12 else sha }}</code></td>
+              <td>
+                {% for e in stats.environments|sort %}<span class="env-chip env-{{ 'local' if e == 'local stack' else ('deployed' if e == 'deployed instance' else 'unknown') }}">{{ e }}</span>{% if not loop.last %} {% endif %}{% else %}<span class="env-chip env-unknown">(unknown)</span>{% endfor %}
+              </td>
               <td class="num">{{ stats.n_runs }}</td>
               <td class="num">{{ stats.n_attacks }}</td>
               <td class="num">{{ stats.n_findings }}</td>
@@ -581,7 +593,7 @@
             </tr>
             {% endfor %}
             {% if not sha_stats %}
-            <tr><td colspan="6" class="dim">No runs recorded yet.</td></tr>
+            <tr><td colspan="7" class="dim">No runs recorded yet.</td></tr>
             {% endif %}
           </tbody>
         </table>
@@ -744,6 +756,7 @@
               <th>Run ID</th>
               <th>Started</th>
               <th>SHA</th>
+              <th>Environment</th>
               <th class="num">Attacks</th>
               <th class="num">Findings</th>
               <th class="num">Cost (USD)</th>
@@ -756,6 +769,7 @@
               <td><code>{{ run.id[:8] if run.id|length > 8 else run.id }}</code></td>
               <td class="muted">{{ run.started_at[:19] if run.started_at else '—' }}</td>
               <td><code>{{ run.target_sha[:8] if run.target_sha|length > 8 else run.target_sha }}</code></td>
+              <td><span class="env-chip {{ run.target_base_url | run_env_class }}">{{ run.target_base_url | run_env_label }}</span></td>
               <td class="num">{{ run.n_attacks }}</td>
               <td class="num">{{ run.n_confirmed_findings }}</td>
               <td class="num">${{ "%.4f"|format(run.total_cost_usd) }}</td>
@@ -763,7 +777,7 @@
             </tr>
             {% endfor %}
             {% if not recent_runs %}
-            <tr><td colspan="7" class="dim">No runs recorded yet.</td></tr>
+            <tr><td colspan="8" class="dim">No runs recorded yet.</td></tr>
             {% endif %}
           </tbody>
         </table>
@@ -831,13 +845,15 @@
     <div class="card">
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
         Recent runs in reverse-chronological order. Each row shows the Orchestrator directive,
-        target SHA, categories attacked, attack/finding counts, and halt reason.
+        the environment it ran against (the deployed Co-Pilot vs a local dev stack), target SHA,
+        categories attacked, attack/finding counts, and halt reason.
       </div>
       <div class="tbl-wrap">
         <table>
           <thead>
             <tr>
               <th>Started</th>
+              <th>Environment</th>
               <th>Orchestrator directive</th>
               <th>Categories targeted</th>
               <th class="num">Attacks</th>
@@ -849,6 +865,7 @@
             {% for run in recent_runs %}
             <tr>
               <td class="muted" style="white-space: nowrap;">{{ run.started_at[:19] if run.started_at else '—' }}</td>
+              <td><span class="env-chip {{ run.target_base_url | run_env_class }}">{{ run.target_base_url | run_env_label }}</span></td>
               <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="{{ run.orchestrator_directive }}">
                 {{ run.orchestrator_directive | truncate(80) }}
               </td>
@@ -869,7 +886,7 @@
             </tr>
             {% endfor %}
             {% if not recent_runs %}
-            <tr><td colspan="6" class="dim">No runs recorded yet.</td></tr>
+            <tr><td colspan="7" class="dim">No runs recorded yet.</td></tr>
             {% endif %}
           </tbody>
         </table>
