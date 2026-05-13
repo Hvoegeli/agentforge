@@ -232,10 +232,10 @@ class DocumentationAgent:
 |---|---|
 | Finding ID | `{finding.id}` |
 | Severity | **{finding.severity.value.upper()}** |
-| Status | `{finding.status.value}` |
+| Status (at report generation) | `{finding.status.value}` — live status in [`RESILIENCE.md`](../RESILIENCE.md) and on the dashboard |
 | Category | {case.category.value} ({invariant_id}) |
 | Target surface | `{case.surface.value}` |
-| Target | `{attempt.target_base_url}` @ `{attempt.target_sha}` |
+| Target (first observed) | `{attempt.target_base_url}` @ `{attempt.target_sha}` |
 | Discovered by | AgentForge (Red Team → Target Adapter → Judge → Documentation) |
 | Judge verdict | `{verdict.observed_behavior.value}` via `{verdict.check_type.value}`{(" model `" + verdict.judge_model + "`") if verdict.judge_model else ""}{(f", confidence {verdict.confidence:.2f}") if verdict.confidence is not None else ""} |
 | Report generated | {now} (template {REPORT_TEMPLATE_VERSION}) |

@@ -610,6 +610,14 @@
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">
         Estimated pass-rate per target SHA over time (earliest → latest).
         A rising pass-rate means the target is becoming more resilient.
+        <br /><br />
+        <strong>One row today, by design.</strong> Every campaign AgentForge has run so far has been
+        against the same deployed target SHA, so the trend has its baseline data point but no direction
+        yet. The platform earns a second row the next time the Co-Pilot ships a new SHA — at that point
+        AgentForge re-runs the full attack floor + regression suite against the new version, and the
+        chart shows whether the target is becoming more or less resilient. <em>Verified-fix status of
+        individual findings (e.g. the 3 that flipped Open&nbsp;→&nbsp;Resolved this week) lives in §4
+        below — that's per-finding state, not per-SHA aggregate.</em>
       </div>
       <div class="tbl-wrap">
         <table>

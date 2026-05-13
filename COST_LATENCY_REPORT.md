@@ -78,6 +78,24 @@ dollars, is the binding constraint; (4) the LLM-Judge is only invoked on the
 residual `UNCERTAIN` semantic cases — every case a deterministic checker can
 adjudicate is free.
 
+## Architecture at each scale — what changes
+
+The PRD calls this out explicitly: cost at 100 / 1K / 10K / 100K is *not*
+`cost-per-token × n_runs`. The architecture has to change at each scale to keep
+$/run falling, and the strategies are different at each step. The dashboard's
+§5 *Cost — Projected at Scale* table renders this from the same model.
+
+| Scale | Architectural strategy | Cost / run | Notes |
+|---|---|---|---|
+| **~100 runs** (measured baseline) | Full model set, no caching | ~$0.068 | The 9-run sample we've recorded so far averages **$0.068/run** with the deterministic floor + LLM-Judge on UNCERTAIN cases + LLM narrative on confirmed findings. This is the upper-bound shape; deterministic-only campaigns within this sample cost $0. |
+| **~1 K runs** | + prompt caching (Claude/OpenAI-style cache hits on the Judge's stable rubric prefix) + dedup via an embedding-similarity gate so near-identical attempts share one judge call | ~$0.041 | Caching cuts the LLM-Judge cost ~40% because the rubric prefix (system prompt + invariant text) is identical across calls. Dedup gates ~20% of repeat near-misses. |
+| **~10 K runs** | Bandit over a cached attack-template library — the Red Team picks from precomputed templates by expected-information-gain; LLM mutation fires only on truly novel signal (~5% of campaigns) | ~$0.008 | The bandit moves LLM cost from per-attack to per-class-of-attack. The deterministic floor still runs every cycle ($0); the LLM only synthesizes when the bandit's exploration budget says a category is informative-but-under-explored. |
+| **~100 K runs** | Bandit + a maintained template library + worker parallelism (multiple campaigns running concurrently against rate-cap-isolated targets) — LLM mutation < 5%, worker parallelism amortizes startup + cache-prime cost | ~$0.003 | At this scale the binding constraint is *wall-clock* (the 20-attacks/min rate cap, per target instance), not dollars. Worker parallelism = horizontal scaling across multiple targets / shards, not more LLM calls per target. |
+
+**The pattern.** Each scale step replaces per-attack LLM calls with one of: a cached prefix, a deduped call, a bandit-selected template, or a parallel worker shared cost. None of these scale by "buy more tokens" — they scale by reducing the LLM's role from *generation* to *novel-signal arbitration*. The deterministic floor (PyRIT / garak / promptfoo + the curated corpus) does the heavy lifting at every scale; LLM spend stays bounded.
+
+**Why this matters for trust.** A CISO reviewing this platform should be able to see that running it continuously *doesn't* mean "a bigger LLM bill every month." The cost stays roughly flat in the *number of confirmed findings* and the *number of genuinely-novel near-misses*, not in the number of attack campaigns. A clean target produces few near-misses → low cost. A target with a fresh regression produces near-misses → the LLM mutator earns its keep.
+
 ## Latency profile (per attack)
 
 | Stage | Deterministic path | LLM path |
