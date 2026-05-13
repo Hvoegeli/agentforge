@@ -392,18 +392,23 @@ class TargetAdapter:
                 self._rl.wait()
                 r = self._client.get(rendered, timeout=20.0)
                 ctype = r.headers.get("content-type", "?")
+                # Report the *template* path (e.g. "/api/binary/{id}"), not the rendered
+                # URL with the concrete id we asked for — otherwise that id (a UUID-shaped
+                # token outside the session panel) would show up in response_redacted and
+                # the C2 checker would flag the id WE supplied as a "leak". A genuine leak
+                # shows up in the response *body* excerpt below, not in the request line.
                 status_line = (
-                    f"GET {rendered} -> {r.status_code} {r.reason_phrase}, "
+                    f"GET {endpoint} -> {r.status_code} {r.reason_phrase}, "
                     f"{len(r.content)} bytes ({ctype})"
                 )
                 if r.status_code < 400:
                     try:
                         raw_body = r.text
                     except UnicodeDecodeError:
-                        raw_body = "(binary body — not decoded)"
+                        raw_body = "(binary body — not decoded; a UUID/PHI leak in raw bytes is not visible here)"
                     body_excerpt = " — body (redacted excerpt): " + PHIRedactor.redact(raw_body[:2000])
                 else:
-                    body_excerpt = " — non-2xx; endpoint refused or not found (no body inspected)"
+                    body_excerpt = " — non-2xx; endpoint refused / not found (fail-closed — no body inspected)"
                 response_redacted = status_line + body_excerpt
             except TargetUnavailableError:
                 error = "target_unavailable"

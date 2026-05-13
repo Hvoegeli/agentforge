@@ -329,7 +329,12 @@ def _c2_binary_idor() -> _SeedFinding:
         severity_hint=Severity.CRITICAL,
         notes=(
             f"sentinels={_SENTINELS} needs_setup=raw_http_get "
-            "known-finding=binary-idor endpoint=/api/binary/{id} ref=endpoint-docstring-admits-it"
+            "known-finding=binary-idor endpoint=/api/binary/{id} ref=endpoint-docstring-admits-it "
+            # A real DocumentReference on the deployed target whose patient is NOT on the
+            # test account's panel (supplied 2026-05-12). The regression replay GETs
+            # /api/binary/<this> as the non-admin session: a 404 means the endpoint now
+            # ACL-walks (fixed); 200 + bytes would mean the IDOR is still open.
+            "http_id=a1c3fdb4-654a-41f1-be2b-865aaf8aafa5"
         ),
     )
     attempt = AttackAttempt(

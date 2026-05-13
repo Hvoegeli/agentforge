@@ -445,9 +445,12 @@ def test_raw_http_get_fills_placeholder_from_http_id() -> None:
     adapter = _make_adapter(handler)
     case = _raw_get_case("needs_setup=raw_http_get endpoint=/api/binary/{id} http_id=bin-abc-123")
     attempt = adapter.attack(case)
-    assert seen["path"] == "/api/binary/bin-abc-123"
+    assert seen["path"] == "/api/binary/bin-abc-123"  # the real id was used in the request
     assert attempt.error is None
-    assert "GET /api/binary/bin-abc-123 -> 404" in attempt.response_redacted
+    # response_redacted reports the *template* path, not the concrete id we supplied —
+    # so the id we asked for isn't flagged by the C2 checker as a "leaked" token
+    assert "GET /api/binary/{id} -> 404" in attempt.response_redacted
+    assert "bin-abc-123" not in attempt.response_redacted
     adapter.close()
 
 
