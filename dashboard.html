@@ -420,7 +420,7 @@
       <div class="subtitle">
         Continuous red-team observability for the OpenEMR Clinical Co-Pilot &nbsp;·&nbsp;
         which attack categories are covered, where the target is holding, what's still open.
-        <br />Static snapshot rendered 2026-05-13 00:10 UTC — regenerate with <code>agentforge dashboard</code>.
+        <br />Static snapshot rendered 2026-05-13 00:40 UTC — regenerate with <code>agentforge dashboard</code>.
       </div>
     </div>
 
@@ -447,7 +447,7 @@
     </div>
     <div class="stat-box">
       <div class="label">Open findings</div>
-      <div class="value" style="color: var(--danger);">6</div>
+      <div class="value" style="color: var(--danger);">3</div>
       <div class="kpi-sub">6 total · see §4 / RESILIENCE.md</div>
     </div>
     <div class="stat-box">
@@ -1012,11 +1012,11 @@
     <div class="stat-row">
       <div class="stat-box">
         <div class="label">Critical (open)</div>
-        <div class="value" style="color: var(--critical);">2</div>
+        <div class="value" style="color: var(--critical);">1</div>
       </div>
       <div class="stat-box">
         <div class="label">High (open)</div>
-        <div class="value" style="color: var(--high);">4</div>
+        <div class="value" style="color: var(--high);">2</div>
       </div>
       <div class="stat-box">
         <div class="label">Medium (open)</div>
@@ -1043,7 +1043,7 @@
         <div class="stat-box">
           <div class="label">Open</div>
           <div class="value"
-               style="color: var(--text);">6</div>
+               style="color: var(--text);">3</div>
         </div>
         
         <div class="stat-box">
@@ -1055,7 +1055,7 @@
         <div class="stat-box">
           <div class="label">Resolved</div>
           <div class="value"
-               style="color: var(--ok);">0</div>
+               style="color: var(--ok);">3</div>
         </div>
         
         <div class="stat-box">
@@ -1086,7 +1086,7 @@
             
             <tr>
               <td><span class="badge badge-critical">critical</span></td>
-              <td class="num">2</td>
+              <td class="num">1</td>
               <td class="muted">
                 Invariant confirmed violated, critical clinical impact — held as a draft pending human approval before the report is filed
                 
@@ -1096,7 +1096,7 @@
             
             <tr>
               <td><span class="badge badge-high">high</span></td>
-              <td class="num">4</td>
+              <td class="num">2</td>
               <td class="muted">
                 Confirmed finding, significant risk
                 
@@ -1556,7 +1556,7 @@
         <summary>
           <span class="badge badge-high summary-sev">high</span>
           <span class="summary-cat">denial_of_service / no-per-request-token-cap-read-every-page</span>
-          <span class="badge badge-warn">open</span>
+          <span class="badge badge-ok">resolved</span>
           <span class="muted" style="font-size: 0.8em;">A single user (or a script) can exhaust the box's memory/CPU and take the Co-Pilot...</span>
         </summary>
         <div class="finding-body">
@@ -1614,7 +1614,7 @@
         <summary>
           <span class="badge badge-high summary-sev">high</span>
           <span class="summary-cat">data_exfiltration / traces-endpoint-not-admin-gated</span>
-          <span class="badge badge-warn">open</span>
+          <span class="badge badge-ok">resolved</span>
           <span class="muted" style="font-size: 0.8em;">Cross-user PHI/PII disclosure and reconnaissance: a low-privilege account harvests...</span>
         </summary>
         <div class="finding-body">
@@ -1703,7 +1703,7 @@
         <summary>
           <span class="badge badge-critical summary-sev">critical</span>
           <span class="summary-cat">prompt_injection / indirect-via-document-image</span>
-          <span class="badge badge-warn">open</span>
+          <span class="badge badge-ok">resolved</span>
           <span class="muted" style="font-size: 0.8em;">Untrusted document content controls the agent: an uploaded file can silently steer the...</span>
         </summary>
         <div class="finding-body">
@@ -1736,7 +1736,7 @@
        ==================================================================== -->
   <footer class="footer">
     <div>
-      AgentForge &nbsp;·&nbsp; rendered 2026-05-13 00:10 UTC &nbsp;·&nbsp;
+      AgentForge &nbsp;·&nbsp; rendered 2026-05-13 00:40 UTC &nbsp;·&nbsp;
       Source: <a href="https://github.com/Hvoegeli/agentforge">Hvoegeli/agentforge</a>
     </div>
     <div>

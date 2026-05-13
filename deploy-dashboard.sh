@@ -33,6 +33,9 @@
 #   AF_KEEP_DB             — set to 1 to NOT wipe AF_DB first (keeps prior runs, e.g.
 #                            local exploratory runs, so they appear on the dashboard
 #                            tagged "local stack"); default wipes for a fresh snapshot
+#   AF_SKIP_REGRESSION     — set to 1 to skip the post-sweep regression-suite step
+#   AF_REGRESSION_N        — replays per in-suite case (default: 3)
+#   AF_REGRESSION_OUT      — regression artifact path (default: evals/results/regression-<sha>.json)
 #   AF_DB / AF_OUT         — local scratch paths (the SQLite DB / the HTML out file)
 #   AF_REPORTS             — where the generated vuln reports go (default: ./reports —
 #                            committed alongside dashboard.html / RESILIENCE.md so the
@@ -107,6 +110,18 @@ for cat in $CATEGORIES; do
   uv run agentforge run --category "$cat" --target-url "$TARGET_URL" --target-sha "$TARGET_SHA" \
     --db "$DB" --reports-dir "$REPORTS"
 done
+
+# Re-verify the seeded known findings against the deployed target: replay each
+# in-suite case N times; a case that holds → its finding flips to `resolved`
+# (the "found → reported → fixed → regression-verified" arc). `regression-suite`
+# exits non-zero if any case doesn't hold (it's also a CI gate) — `|| true` so a
+# still-open finding doesn't abort the deploy. Set AF_SKIP_REGRESSION=1 to skip.
+REGRESSION_OUT="${AF_REGRESSION_OUT:-evals/results/regression-${TARGET_SHA##*@}.json}"
+if [[ -z "${AF_SKIP_REGRESSION:-}" ]]; then
+  echo "==> regression suite vs $TARGET_URL (update-status) -> $REGRESSION_OUT"
+  uv run agentforge regression-suite --db "$DB" --target-sha "$TARGET_SHA" \
+    --n "${AF_REGRESSION_N:-3}" --update-status --out "$REGRESSION_OUT" || true
+fi
 
 echo "==> rendering dashboard -> $OUT (+ RESILIENCE.md)"
 uv run agentforge dashboard --db "$DB" --out "$OUT" --resilience-md RESILIENCE.md
