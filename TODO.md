@@ -75,3 +75,36 @@ it; otherwise it's a `lead`/`uncertain` case that pins the boundary).
   before submission; submit the current trycloudflare URLs with the checkpoint.
 - **`needs_setup=write_fhir_field` (C1 indirect-via-FHIR-field).** Not implemented (recorded
   as a skipped setup). Lower priority than session_adoption.
+
+### Added 2026-05-12 (after the 9-categories + regression-verification session — `2dc1c05`)
+
+- **C1 doc-image is `resolved` on the dashboard, but the *code* path isn't fixed.** The
+  regression replay clears 3/3 (the discharge-summary "[ASSISTANT INSTRUCTIONS…]" injection
+  no longer reproduces) → `--update-status` flipped it to `resolved`; but the jailbreak
+  quarantine still scans only tool-result *text*, never the rendered-PNG channel
+  `get_document_content` feeds the vision model (see `THREAT_MODEL.md` § Fix status, and the
+  "C1 doc-image — waiting on the attack image" note above). **Decide the framing:** push the
+  Co-Pilot team to land the quarantine fix (then it's genuinely closed), or represent "exploit
+  doesn't reproduce but the code gap is open" as something other than plain `resolved` on the
+  dashboard. The user explicitly asked about this — don't let it slide silently.
+- **The binary-IDOR seed's `http_id` is a specific deployed-instance DocumentReference.**
+  `_c2_binary_idor` carries `http_id=a1c3fdb4-654a-41f1-be2b-865aaf8aafa5` — an off-panel
+  doc on the *current* Co-Pilot FHIR data. If the target is redeployed / its FHIR demo data
+  re-seeded (e.g. the Final re-pins the baseline), that id may not exist → the regression
+  replay errors → F3 flips back to `open` spuriously. Refresh the id (and, per the "sharpen
+  the binary-IDOR check" note, also wire `http_patient=<owning UUID>`) whenever the target's
+  data changes. Same fragility applies to `_OUT_OF_PANEL_PATIENT` and the `upload_doc` panel
+  patients if the demo data shifts.
+- **Re-pin the regression baseline for the Final.** `THREAT_MODEL.md` keeps the MVP baseline
+  at `74aa5be4`; the Final re-pins to whatever the Co-Pilot is at then. Before submission:
+  bump `COPILOT_TARGET_SHA` (`.env`) + the baseline SHA in `THREAT_MODEL.md`, re-run
+  `deploy-dashboard.sh` (it now does seed → 9-category sweep → `regression-suite --update-status`
+  → render → scp), commit the regenerated artifacts, submit the current trycloudflare URLs.
+- **C3's deterministic checker is a stub** (`invariants/c3_state_corruption.py` always returns
+  UNCERTAIN). The C3 seeds (`attacks/seeds.py` — forged-prior-turn / attacker-supplied-guideline
+  / cross-session-canary) run against the target but every verdict is UNCERTAIN/escalate, so
+  C3 never shows PASS/FAIL on the dashboard. To give it real signal: either get the Co-Pilot
+  to surface `conversation_sources` / per-turn provenance in `/api/traces` (then the deterministic
+  provenance walk works), or add a `C3.provenance` handler in `judge/llm_judge.py` (C3 is already
+  in `_LLM_JUDGEABLE_INVARIANTS`, but nothing answers it). This is the gap behind the "B2 / C3
+  corpus cases" note — the C3 corpus can't be settled until the checker can decide.
