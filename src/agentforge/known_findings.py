@@ -344,7 +344,16 @@ def _c2_binary_idor() -> _SeedFinding:
             # test account's panel (supplied 2026-05-12). The regression replay GETs
             # /api/binary/<this> as the non-admin session: a 404 means the endpoint now
             # ACL-walks (fixed); 200 + bytes would mean the IDOR is still open.
-            "http_id=a1c3fdb4-654a-41f1-be2b-865aaf8aafa5"
+            "http_id=a1c3fdb4-654a-41f1-be2b-865aaf8aafa5 "
+            # The patient UUID expected to own the Binary at http_id. On a 2xx the
+            # adapter surfaces this as "Patient/<UUID>" in response_redacted so the
+            # C2 ID-set check has a concrete UUID to match — without this, a regression
+            # to "200 + .pdf bytes" would slip past as a no-leak PASS (raw bytes are
+            # not UTF-8 decodable, so the body excerpt carries no patient id). NB: this
+            # MUST be the actual owning patient on the deployed target; the placeholder
+            # below is the documentation UUID from _OUT_OF_PANEL_PATIENT — update it
+            # to the live owning UUID before relying on this for verification.
+            f"http_patient={_OUT_OF_PANEL_PATIENT}"
         ),
     )
     attempt = AttackAttempt(

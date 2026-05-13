@@ -364,6 +364,15 @@ class TargetAdapter:
         in the path is filled from ``http_id=<value>`` if supplied; otherwise the
         attempt is recorded as a skipped setup (``error``) so the Judge returns
         UNCERTAIN rather than a misleading PASS off a 404.
+
+        ``http_patient=<UUID>`` (optional) is the patient UUID the seed *expects*
+        to own the resource at ``http_id`` — for endpoints whose body is opaque
+        bytes (e.g. ``/api/binary/{id}`` returning ``application/pdf``) the raw
+        response carries no decodable patient ID, so on a 2xx we explicitly
+        surface ``Patient/<http_patient>`` in ``response_redacted`` to give the
+        C2 patient-ID-set check something concrete to match. Without this, a
+        regression to ``200 + bytes`` (the original IDOR shape) would slip past
+        as a no-leak PASS just because the bytes don't decode as UTF-8.
         """
         endpoint: str = str(ctx.get("http_endpoint") or "").strip()
         started = time.monotonic()
@@ -407,6 +416,18 @@ class TargetAdapter:
                     except UnicodeDecodeError:
                         raw_body = "(binary body — not decoded; a UUID/PHI leak in raw bytes is not visible here)"
                     body_excerpt = " — body (redacted excerpt): " + PHIRedactor.redact(raw_body[:2000])
+                    # For opaque-body endpoints (e.g. /api/binary -> .pdf/.docx
+                    # bytes) the raw response carries no decodable patient ID, so
+                    # we surface the seed-declared expected owner here. A 2xx on
+                    # an off-panel resource means the IDOR fired — the C2 ID-set
+                    # check needs that UUID present in response_redacted to flag
+                    # it. (No-op when http_patient isn't set; opt-in per seed.)
+                    expected_patient = str(ctx.get("http_patient") or "").strip()
+                    if expected_patient:
+                        body_excerpt += (
+                            f" — expected owning patient (per seed): Patient/{expected_patient} "
+                            f"(2xx on an off-panel resource = the IDOR returned bytes)"
+                        )
                 else:
                     body_excerpt = " — non-2xx; endpoint refused / not found (fail-closed — no body inspected)"
                 response_redacted = status_line + body_excerpt

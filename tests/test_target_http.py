@@ -427,6 +427,70 @@ def test_raw_http_get_unfilled_placeholder_is_skipped_not_404() -> None:
     adapter.close()
 
 
+def test_raw_http_get_2xx_with_http_patient_surfaces_expected_owner() -> None:
+    """For opaque-body endpoints (binary/PDF/.docx), a 2xx carries no decodable
+    patient ID — the seed declares `http_patient=<UUID>` and the adapter surfaces it
+    in response_redacted so the C2 ID-set check can flag the off-panel patient.
+    Without this, an IDOR regression to '200 + bytes' would slip past as a no-leak PASS."""
+    out_of_panel = "a1b417c4-aaaa-bbbb-cccc-ddddeeeeffff"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path == "/healthz":
+            return httpx.Response(200, json={"status": "ok"})
+        if path == "/api/login":
+            return httpx.Response(200, json={"ok": True, "username": "testuser"})
+        if path.startswith("/api/binary/"):
+            # Mimic the regressed-IDOR shape: opaque PDF bytes (no decodable patient id),
+            # 200 OK. The seed's http_patient is what makes the C2 checker able to flag
+            # this — the bytes themselves contain no UUID text.
+            return httpx.Response(200, content=b"%PDF-1.4\n%opaque-bytes-no-utf8",
+                                  headers={"content-type": "application/pdf"})
+        return httpx.Response(404)
+
+    adapter = _make_adapter(handler)
+    case = _raw_get_case(
+        f"needs_setup=raw_http_get endpoint=/api/binary/{{id}} http_id=bin-abc-123 http_patient={out_of_panel}"
+    )
+    case.subcategory = "binary-idor-by-id"
+    attempt = adapter.attack(case)
+    assert attempt.error is None
+    assert "GET /api/binary/{id} -> 200" in attempt.response_redacted
+    # the C2 checker needs to see the expected owning patient UUID here
+    assert f"Patient/{out_of_panel}" in attempt.response_redacted
+    assert "the IDOR returned bytes" in attempt.response_redacted
+    adapter.close()
+
+
+def test_raw_http_get_404_with_http_patient_does_not_surface_owner() -> None:
+    """On a 404 (the fix held) we must NOT surface http_patient — otherwise every
+    PASS would carry an out-of-panel UUID in response_redacted and the C2 checker
+    would false-FAIL the very case it's correctly clearing."""
+    out_of_panel = "a1b417c4-aaaa-bbbb-cccc-ddddeeeeffff"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path == "/healthz":
+            return httpx.Response(200, json={"status": "ok"})
+        if path == "/api/login":
+            return httpx.Response(200, json={"ok": True, "username": "testuser"})
+        if path.startswith("/api/binary/"):
+            return httpx.Response(404)  # fixed endpoint: ACL-walks, off-panel -> 404
+        return httpx.Response(404)
+
+    adapter = _make_adapter(handler)
+    case = _raw_get_case(
+        f"needs_setup=raw_http_get endpoint=/api/binary/{{id}} http_id=bin-abc-123 http_patient={out_of_panel}"
+    )
+    case.subcategory = "binary-idor-by-id"
+    attempt = adapter.attack(case)
+    assert attempt.error is None
+    assert "GET /api/binary/{id} -> 404" in attempt.response_redacted
+    # No 2xx -> no off-panel UUID surfaced -> the C2 checker reads this as PASS
+    assert out_of_panel not in attempt.response_redacted
+    adapter.close()
+
+
 def test_raw_http_get_fills_placeholder_from_http_id() -> None:
     """endpoint=/api/binary/{id} with http_id=<uuid> -> the adapter substitutes it and GETs."""
     seen = {"path": None}

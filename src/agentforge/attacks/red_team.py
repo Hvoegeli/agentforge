@@ -79,6 +79,11 @@ def context_from_case(case: AttackCase) -> dict[str, Any]:
             # Concrete value to substitute for a "{id}" placeholder in http_endpoint
             # (e.g. a real out-of-panel Binary id for the binary-IDOR seed).
             ctx["http_id"] = tok[len("http_id=") :]
+        elif tok.startswith("http_patient="):
+            # Patient UUID expected to own the resource at http_id — surfaced in
+            # response_redacted on a 2xx so the C2 ID-set check can flag it even
+            # when the body is opaque bytes (e.g. /api/binary/<id> -> .pdf bytes).
+            ctx["http_patient"] = tok[len("http_patient=") :]
     return ctx
 
 
