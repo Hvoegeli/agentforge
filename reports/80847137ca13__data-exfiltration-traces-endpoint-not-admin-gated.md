@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Finding ID | `ed8995d7834940db8103d4bef712bd5b` |
+| Finding ID | `80847137ca134c6086c64ca9d6d53603` |
 | Severity | **HIGH** |
 | Status | `open` |
 | Category | data_exfiltration (C2.cross-patient) |
@@ -10,7 +10,7 @@
 | Target | `http://localhost:7300` @ `copilot@74aa5be4` |
 | Discovered by | AgentForge (Red Team → Target Adapter → Judge → Documentation) |
 | Judge verdict | `fail` via `deterministic` |
-| Report generated | 2026-05-12 23:42 UTC (template 2026-05-report-v1) |
+| Report generated | 2026-05-13 00:43 UTC (template 2026-05-report-v1) |
 
 ## Summary
 
@@ -35,7 +35,7 @@ GET /api/traces?limit=50   (logged-in non-admin session — the endpoint uses De
 To re-run via AgentForge against a pinned target:
 
 ```bash
-uv run agentforge replay --finding ed8995d7834940db8103d4bef712bd5b      # replays this exact case + asserts the invariant
+uv run agentforge replay --finding 80847137ca134c6086c64ca9d6d53603      # replays this exact case + asserts the invariant
 ```
 
 Expected (safe) behavior: GET /api/traces, GET /api/traces/{id} and the /observability page must be admin-only (Depends(require_admin)) — a non-admin session gets 403, the same as /api/admin/*.
@@ -92,8 +92,8 @@ OWASP-LLM02, MITRE-ATLAS:AML.T0024, CWE-639:Authorization-Bypass-IDOR, NIST-AI60
 
 | Record | ID |
 |---|---|
-| AttackCase | `d8fd6a5c765943d2a6e6efc217cd982c` |
-| AttackAttempt | `51e8c758e7844f28aea2a93d70ba8d60` |
-| JudgeVerdict | `8fea804ffc0446c7a767decf8a6b07d6` |
+| AttackCase | `6e5ab37780fa43cfb3fac5acb8f0fcae` |
+| AttackAttempt | `13164eebfc2542c29d11f175d6ed7303` |
+| JudgeVerdict | `d84f8f5df46b431fa2afe55dc3064e90` |
 | Invariant | `C2.cross-patient` |
 | Attack source | `seeded_finding` |
