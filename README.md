@@ -2,7 +2,7 @@
 
 > An autonomous multi-agent adversarial-evaluation platform that continuously red-teams an LLM-assisted clinical chatbot.
 
-**Status:** MVP (2026-05-12) — platform built, 166 tests green, 6 seeded findings, live runs against the deployed target. Final: 2026-05-15.
+**Status:** MVP (2026-05-12) — platform built, 201 tests green, 6 seeded findings, all 9 attack categories exercised live against the deployed target (9/9 on the dashboard). Final: 2026-05-15.
 
 **Target system (the "victim"):** the [OpenEMR Clinical Co-Pilot](https://github.com/Hvoegeli/openemr) (Weeks 1–2 build), running on Hetzner and exposed over a Cloudflare quick tunnel. AgentForge reaches the target over HTTP — exactly like an external attacker would — and never shares a process, a database, or a CI pipeline with it.
 
@@ -76,7 +76,7 @@ agentforge/
 │   ├── storage/              (SQLite findings DB + JSONL trace writer)
 │   ├── observability/        (metrics computation for the dashboard)
 │   └── dashboard/            (Jinja2 render → static HTML)
-├── tests/                    (pytest — 166 tests)
+├── tests/                    (pytest — 201 tests)
 ├── .github/workflows/        (ci.yml)
 ├── LICENSE                   (MIT)
 └── pyproject.toml / uv.lock / .env.example / .python-version

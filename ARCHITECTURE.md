@@ -16,7 +16,7 @@ AgentForge is a **multi-agent system that continuously red-teams the Clinical Co
 
 **Model strategy.** No main-LLM proprietary APIs. OpenRouter is the provider-routing layer (fallback chains, spend caps, data-policy filters); the deliberately less-aligned open-weight Red Team model directly answers the PRD's observation that "some commercial LLMs are intentionally trained to avoid offensive security workflows." Local Ollama for dev keeps cost near zero under a $10–50 weekly cap; the cost analysis measures ~100 runs and *projects* 1K/10K/100K with a stated methodology.
 
-**Tradeoffs.** Simpler-than-distributed by choice: LangGraph + SQLite, not a Redis message bus or Postgres (roadmap). For the MVP, C1 (prompt injection) gets the full live closed loop; C2/C4/C6 get seed cases + ≥ 1 live run each. The Documentation agent is a templated formatter, not a heavy reasoner. Everything traces back to published frameworks (§"Framework Mapping Chart" in `THREAT_MODEL.md`); AgentForge invents no taxonomy.
+**Tradeoffs.** Simpler-than-distributed by choice: LangGraph + SQLite, not a Redis message bus or Postgres (roadmap). C1 (prompt injection) gets the full live closed loop; all nine categories have a deterministic seed floor + ≥ 1 live run against the deployed target (the dashboard shows 9/9 exercised — B2 via the `B2.improper-output` active-payload checker; C3's deterministic checker is a provenance stub, so its seeds run but adjudicate UNCERTAIN until the target exposes session state). The Documentation agent is a templated formatter, not a heavy reasoner. Everything traces back to published frameworks (§"Framework Mapping Chart" in `THREAT_MODEL.md`); AgentForge invents no taxonomy.
 
 ---
 
@@ -281,7 +281,7 @@ agentforge/                         (this repo — GitHub: Hvoegeli/agentforge �
 │   ├── storage/                    (SQLite findings DB + JSONL trace writer)
 │   ├── observability/              (metrics computation for the dashboard)
 │   └── dashboard/                  (Jinja2 render → static HTML)
-├── tests/                          (pytest — 166 tests)
+├── tests/                          (pytest — 201 tests)
 ├── .github/workflows/              (ci.yml; a scheduled attack-loop workflow is a roadmap item)
 ├── pyproject.toml · uv.lock · .env.example · LICENSE · .python-version
 ```
