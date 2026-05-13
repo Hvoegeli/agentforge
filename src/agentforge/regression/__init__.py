@@ -219,11 +219,25 @@ def run_regression_suite(
     target_sha = str(getattr(adapter, "target_sha", None) or "unknown")
     target_base_url = str(getattr(adapter, "base_url", None) or "unknown")
 
+    # The C2 / C4-ACL checkers need the session's authorized patient panel. The
+    # AttackCase doesn't carry it (it's resolved live), so ask the adapter — at
+    # replay time we're logged in as the test account, so its panel is whatever the
+    # live session resolves to. Harmless for the other invariants (they ignore it).
+    panel_ctx: dict[str, Any] | None = None
+    resolve_panel = getattr(adapter, "resolved_panel", None)
+    if callable(resolve_panel):
+        try:
+            panel = sorted(resolve_panel())
+        except Exception:  # pragma: no cover - best effort; never break the suite
+            panel = []
+        if panel:
+            panel_ctx = {"authorized_patient_ids": panel, "allowed_patient_ids": panel}
+
     case_reports: list[dict[str, Any]] = []
     n_holding = 0
     n_regressions_detected = 0
     for case in cases:
-        res = replay_case(case, n=n, adapter=adapter, judge=judge)
+        res = replay_case(case, n=n, adapter=adapter, judge=judge, context=panel_ctx)
         if res.holds:
             n_holding += 1
 

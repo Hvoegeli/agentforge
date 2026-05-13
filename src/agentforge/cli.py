@@ -277,6 +277,7 @@ def regression_suite_cmd(
     target_sha: str | None = typer.Option(None, "--target-sha", help="Override the recorded target git SHA (e.g. the post-fix SHA)."),
     out: str | None = typer.Option(None, "--out", help="Write the suite report (JSON) here, e.g. evals/results/regression-<sha>.json — the committable post-fix artifact."),
     update_status: bool = typer.Option(False, "--update-status", help="Persist finding-status transitions: a case that now holds → its finding `resolved`; a previously-resolved case that now fails → `regression`."),
+    llm_judge: bool = typer.Option(False, "--llm-judge", help="Use the LLM-Judge (escalates genuinely-semantic UNCERTAIN verdicts; requires OPENROUTER_API_KEY; costs credits). Default is deterministic-only."),
 ) -> None:
     """Replay every case in the regression suite (in_regression_suite=1) N times against the
     target and report, per case, whether its invariant still holds. Exits non-zero if any
@@ -285,6 +286,7 @@ def regression_suite_cmd(
     With ``--out`` writes the committable "found → reported → fixed → regression-verified"
     artifact; with ``--update-status`` flips the linked findings to ``resolved`` / ``regression``."""
     _setup_logging()
+    from agentforge.judge import Judge
     from agentforge.regression import run_regression_suite
 
     db = _open_db(db_path)
@@ -296,7 +298,8 @@ def regression_suite_cmd(
             raise typer.Exit(code=0)
         _require_target_ready(adapter)
 
-        report = run_regression_suite(cases, adapter=adapter, n=n, db=db, update_status=update_status)
+        judge = Judge(enable_llm_judge=True) if llm_judge else None
+        report = run_regression_suite(cases, adapter=adapter, n=n, db=db, update_status=update_status, judge=judge)
 
         t = Table(title=f"Regression suite — {len(cases)} case(s) × {n} replay(s) each @ {report['target_sha']}")
         t.add_column("case")

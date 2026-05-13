@@ -453,6 +453,24 @@ class TargetAdapter:
         ctx = context_from_case(case)
         if ctx.get("needs_setup") == "raw_http_get":
             return self._raw_http_get_attempt(case, ctx)
+        _setup = ctx.get("needs_setup")
+        if _setup in ("session_adoption", "write_fhir_field"):
+            # Not implemented yet — record a skipped setup (error set, no chat turn)
+            # so the Judge returns UNCERTAIN rather than a misleading PASS off a bare
+            # turn that never exercised the vector.
+            return AttackAttempt(
+                attack_case_id=case.id,
+                target_sha=self.target_sha,
+                target_base_url=self.base_url,
+                request_summary=f"{case.category.value}/{case.subcategory} (setup '{_setup}' not implemented — skipped)",
+                response_redacted="",
+                tool_trace=[],
+                token_usage={},
+                cost_usd=0.0,
+                latency_ms=0.0,
+                n_supervisor_hops=None,
+                error=f"setup_skipped: needs_setup={_setup} is not implemented yet",
+            )
         is_multi_turn = len(case.prompt_or_sequence) > 1
         timeout = self.timeout_multi_turn if is_multi_turn else self.timeout_single_turn
         advisor_mode = "advisor_mode=true" in (case.notes or "").lower()
