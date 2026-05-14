@@ -15,7 +15,7 @@
 │ Deployed dashboard URL ↓       │                  │ Deployed target URL ↓                    │
 │ asin-vessels-differ-drunk.     │                  │ hansen-rat-ages-rim.                     │
 │   trycloudflare.com            │                  │   trycloudflare.com                      │
-│ (systemd: agentforge-dashboard-*) │               │ (systemd: clinical-copilot-*, port 7300) │
+│ (systemd: agentforge-dashboard-*) │               │ (its own service + Cloudflare tunnel)    │
 └────────────────────────────────┘                  └──────────────────────────────────────────┘
 ```
 
@@ -97,7 +97,7 @@ agentforge/
 │   ├── storage/              (SQLite findings DB + JSONL trace writer)
 │   ├── observability/        (metrics computation for the dashboard)
 │   └── dashboard/            (Jinja2 render → static HTML)
-├── tests/                    (pytest — 201 tests)
+├── tests/                    (pytest — 206 tests)
 ├── .github/workflows/        (ci.yml)
 ├── LICENSE                   (MIT)
 └── pyproject.toml / uv.lock / .env.example / .python-version

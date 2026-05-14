@@ -5,16 +5,19 @@
 > the Final checkpoint. Everything else in this directory is supporting
 > evidence or historical baseline.
 
-The artifacts in this directory are the **committed, reproducible proofs**
-that AgentForge ran against the deployed Co-Pilot at a pinned target SHA.
-Every file carries `target_base_url` and `target_sha` so the cross-process
-HTTPS round-trip is provable from the data alone.
+The two **`*1055abd71*`** artifacts in this directory are the
+**committed, reproducible proofs** that AgentForge ran against the deployed
+Co-Pilot at a pinned target SHA. They each carry `target_base_url` and
+`target_sha` — at the top level in `regression-1055abd71.json`, and inside
+each `runs[]` element in `c4-c6-live-1055abd71.json`. The third file
+(`seeded-baseline.json`) is a pre-live-target snapshot and **doesn't** carry
+those fields; treat it as historical baseline, not as cross-process proof.
 
 | File | Date | Purpose | Status |
 |---|---|---|---|
-| **`regression-1055abd71.json`** | 2026-05-13 | **CANONICAL** — full regression suite: 6 seeded findings × 3 replays each, all against `copilot@1055abd71` on the deployed Hetzner instance. `summary.n_holding = 6`, `summary.status_updates_written = true`. This is the "verify the fixes held" proof for the Final submission. | **read this first** |
-| `c4-c6-live-1055abd71.json` | 2026-05-12 | A focused C4 + C6 campaign run record (RunRecord shape) — `target_base_url`, `target_sha`, UTC timestamps, attack/finding counts, halted-reason. Demonstrates a single live campaign's data shape; pair with `regression-1055abd71.json` for the full picture. | supporting |
-| `seeded-baseline.json` | 2026-05-12 | Day-one snapshot from `agentforge seed-findings` (the 6 known weaknesses re-replayed through the deterministic invariant checkers, no live target involved). Historical baseline; **NOT** evidence of live-target attack — the live-target proofs are the two files above. | historical baseline |
+| **`regression-1055abd71.json`** | 2026-05-13 | **CANONICAL** — full regression suite: 6 seeded findings × 3 replays each, all against `copilot@1055abd71` on the deployed Hetzner instance. Top-level fields: `target_base_url`, `target_sha`, `n_replays_per_case`, `summary.n_holding = 6`, `summary.status_updates_written = true`. This is the "verify the fixes held" proof for the Final submission. | **read this first** |
+| `c4-c6-live-1055abd71.json` | 2026-05-12 | Two focused live campaign records (C4 + C6, RunRecord shape) — **per-run fields are nested** under `runs[]`: `runs[].target_base_url`, `runs[].target_sha`, `runs[].started_at` / `runs[].finished_at`, `runs[].n_attacks`, `runs[].halted_reason`. Demonstrates a single live campaign's data shape; pair with `regression-1055abd71.json` for the full picture. | supporting |
+| `seeded-baseline.json` | 2026-05-12 | Day-one snapshot from `agentforge seed-findings` (the 6 known weaknesses re-replayed through the deterministic invariant checkers, no live target involved). Carries no `target_base_url` / `target_sha` (it's a pre-live-target snapshot). Historical baseline; **NOT** evidence of live-target attack — the live-target proofs are the two `*1055abd71*` files above. | historical baseline |
 
 ## How to regenerate
 
@@ -29,8 +32,15 @@ uv run agentforge regression-suite \
   --n 3 --update-status \
   --out evals/results/regression-1055abd71.json
 
-# regenerate c4-c6-live-<sha>.json — a single campaign record
+# regenerate c4-c6-live-<sha>.json — two live campaign records (C4 + C6)
+# Note: `agentforge run` writes to the SQLite DB; the JSON in evals/results/
+# is exported from the DB. See the file's own `_reproduce` top-level field
+# for the exact two commands and the DB → JSON export step that produced it.
 uv run agentforge run --category C4 \
+  --target-url https://hansen-rat-ages-rim.trycloudflare.com \
+  --target-sha copilot@1055abd71 \
+  --db /tmp/grader.sqlite
+uv run agentforge run --category C6 \
   --target-url https://hansen-rat-ages-rim.trycloudflare.com \
   --target-sha copilot@1055abd71 \
   --db /tmp/grader.sqlite
@@ -39,7 +49,7 @@ uv run agentforge run --category C4 \
 uv run agentforge seed-findings --db /tmp/seed.sqlite --reports-dir /tmp/reports
 ```
 
-The full sweep is wrapped in [`../deploy-dashboard.sh`](../../deploy-dashboard.sh)
+The full sweep is wrapped in [`../../deploy-dashboard.sh`](../../deploy-dashboard.sh)
 (seed → 9-cat live sweep → regression-suite with `--update-status` → render +
 scp the dashboard) and is the single command that produces all three
 artifacts plus the deployed `RESILIENCE.md` / `dashboard.html`.

@@ -293,7 +293,7 @@ agentforge/                         (this repo — GitHub: Hvoegeli/agentforge �
 │   ├── storage/                    (SQLite findings DB + JSONL trace writer)
 │   ├── observability/              (metrics computation for the dashboard)
 │   └── dashboard/                  (Jinja2 render → static HTML)
-├── tests/                          (pytest — 201 tests)
+├── tests/                          (pytest — 206 tests)
 ├── .github/workflows/              (ci.yml; a scheduled attack-loop workflow is a roadmap item)
 ├── pyproject.toml · uv.lock · .env.example · LICENSE · .python-version
 ```
