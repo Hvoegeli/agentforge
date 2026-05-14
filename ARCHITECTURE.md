@@ -1,6 +1,18 @@
 # ARCHITECTURE.md — AgentForge Multi-Agent Adversarial Evaluation Platform
 
-_Target = the OpenEMR Clinical Co-Pilot (Weeks 1–2 build). Companion docs: [`THREAT_MODEL.md`](THREAT_MODEL.md) (the attack surface), [`evals/success_criteria.md`](evals/success_criteria.md) (the per-category invariants the Judge checks), [`presearch.md`](presearch.md) (constraints + decisions), [`src/agentforge/models.py`](src/agentforge/models.py) (the data contracts between agents)._
+_AgentForge is a **standalone adversarial-evaluation platform** at
+[`Hvoegeli/agentforge`](https://github.com/Hvoegeli/agentforge). The target it
+attacks — the OpenEMR Clinical Co-Pilot (Weeks 1–2 build) — is a different
+repo at [`Hvoegeli/openemr`](https://github.com/Hvoegeli/openemr). AgentForge
+reaches the Co-Pilot **only over HTTPS** through the Target Adapter
+([`src/agentforge/target/adapter.py`](src/agentforge/target/adapter.py)), against
+an allowlisted external URL — no shared Python process, no shared database,
+no shared CI. Path references like `clinical-copilot/evals/` in this document
+point to files **inside the Co-Pilot repo**, not inside this one. See
+[`MVP_EVIDENCE.md`](MVP_EVIDENCE.md) for the runnable proof of cross-process
+separation._
+
+_Companion docs: [`THREAT_MODEL.md`](THREAT_MODEL.md) (the attack surface), [`evals/success_criteria.md`](evals/success_criteria.md) (the per-category invariants the Judge checks), [`presearch.md`](presearch.md) (constraints + decisions), [`src/agentforge/models.py`](src/agentforge/models.py) (the data contracts between agents)._
 
 ---
 

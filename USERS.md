@@ -1,5 +1,7 @@
 # USERS.md — Who AgentForge Is For
 
+_AgentForge ([`Hvoegeli/agentforge`](https://github.com/Hvoegeli/agentforge)) is a standalone adversarial-evaluation platform. The target it attacks — the Clinical Co-Pilot — is a different repo ([`Hvoegeli/openemr`](https://github.com/Hvoegeli/openemr)); paths like `clinical-copilot/evals/` in this file point inside that repo, not this one. See [`MVP_EVIDENCE.md`](MVP_EVIDENCE.md) for the runnable cross-process proof._
+
 _Companion docs: [`THREAT_MODEL.md`](THREAT_MODEL.md) (the attack surface), [`ARCHITECTURE.md`](ARCHITECTURE.md) (the multi-agent design), [`evals/success_criteria.md`](evals/success_criteria.md) (the invariants), [`presearch.md`](presearch.md) (constraints + decisions)._
 
 ---

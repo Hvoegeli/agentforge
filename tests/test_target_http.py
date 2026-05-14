@@ -1,8 +1,13 @@
 """HTTP-level tests for TargetAdapter against a mocked Co-Pilot (httpx.MockTransport).
 
-These pin the adapter to the contracts in clinical-copilot/app/main.py:
-POST /api/login (session cookie), GET /healthz, POST /chat (session_id echoed back,
-advisor_mode), GET /api/traces?limit=N -> {"count","items":[...]}.
+These pin the adapter to the HTTP contracts the target exposes — verified by
+reading ``clinical-copilot/app/main.py`` in the Co-Pilot repo at
+``github.com/Hvoegeli/openemr`` (a different repo from this one; AgentForge
+reaches that target only over HTTPS in real runs).
+
+Contracts pinned: POST /api/login (session cookie), GET /healthz, POST /chat
+(session_id echoed back, advisor_mode), GET /api/traces?limit=N ->
+{"count","items":[...]}.
 """
 
 from __future__ import annotations

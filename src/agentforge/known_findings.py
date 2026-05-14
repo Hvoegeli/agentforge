@@ -28,7 +28,9 @@ cold).
    until a live C5 run against it shows the invariant holds.*
 
 **Two findings from the 2026-05-12 manual security pass** (static-analysis review
-of ``clinical-copilot/app/**``; both already fixed in ``copilot@1055abd71`` —
+of the target's source — the ``clinical-copilot/app/**`` tree in the Co-Pilot
+repo at ``github.com/Hvoegeli/openemr``, *not* this repo; both already fixed in
+``copilot@1055abd71`` —
 "fix(copilot): close cross-panel PHI exposure paths flagged in pen-test" — and kept
 here as regression cases so they cannot silently come back):
 

@@ -15,7 +15,10 @@ Guarantees enforced here (the "responsible testing posture" from THREAT_MODEL.md
 * **Transcript redaction** — every response is run through :class:`PHIRedactor`
   before it leaves this module (synthetic data today, HIPAA-safe pipeline tomorrow).
 
-Endpoint contracts (verified against ``clinical-copilot/app/main.py``):
+Endpoint contracts (verified by reading the target's source — the
+``clinical-copilot/app/main.py`` file in the Co-Pilot repo at
+``github.com/Hvoegeli/openemr``, *not* this repo; AgentForge only reaches the
+Co-Pilot at runtime via the allowlisted HTTPS URL configured in ``.env``):
 
 * ``POST /api/login`` — body ``{"username", "password"}`` → ``200 {"ok": true, "username"}``
   on success, ``401`` on bad creds; sets a signed session cookie (Starlette

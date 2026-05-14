@@ -2,6 +2,15 @@
 
 _AgentForge · target = the OpenEMR Clinical Co-Pilot (Weeks 1–2 build) · synthetic patient data only · pinned target SHA: `74aa5be4c8b22dfd92b3c233edbb107424efd01d` (openemr `master`; MVP baseline for the regression suite)_
 
+> **Paths convention.** This document is the **attack-surface map of the
+> target**. AgentForge is a separate repo at [`Hvoegeli/agentforge`](https://github.com/Hvoegeli/agentforge);
+> the Co-Pilot it attacks is a different repo at [`Hvoegeli/openemr`](https://github.com/Hvoegeli/openemr).
+> Path references like `clinical-copilot/app/...`, `clinical-copilot/COST_LATENCY_REPORT.md`,
+> and `clinical-copilot/evals/` in this file point to files **inside the Co-Pilot repo**,
+> not inside this one — AgentForge contains no `clinical-copilot/` directory.
+> AgentForge reaches the Co-Pilot only over HTTPS at runtime (see
+> [`MVP_EVIDENCE.md`](MVP_EVIDENCE.md)).
+
 ---
 
 ## Executive summary (~500 words)

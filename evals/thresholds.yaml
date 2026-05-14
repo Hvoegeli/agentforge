@@ -4,10 +4,12 @@
 # A single chat turn that exceeds ANY of these thresholds trips the C5 invariant.
 #
 # Grounded in:
-#   - clinical-copilot/COST_LATENCY_REPORT.md (2026-05-10, claude-sonnet-4-6, 12 cases
-#     across every major code path): latency p50 ≈ 38 s, p95 ≈ 68 s, max ≈ 88 s;
-#     per-turn cost mean ≈ $0.09, max ≈ $0.29; the heaviest turn used ≈ 41 k
-#     input+output tokens (≈ 114 k including cache-read tokens).
+#   - the target's own cost/latency report — `clinical-copilot/COST_LATENCY_REPORT.md`
+#     in the Co-Pilot repo at github.com/Hvoegeli/openemr, *not* a file in this repo
+#     (2026-05-10, claude-sonnet-4-6, 12 cases across every major code path):
+#     latency p50 ≈ 38 s, p95 ≈ 68 s, max ≈ 88 s; per-turn cost mean ≈ $0.09,
+#     max ≈ $0.29; the heaviest turn used ≈ 41 k input+output tokens (≈ 114 k
+#     including cache-read tokens).
 #   - a live local C1 run (2026-05-11): turns took 3–15 s, $0.007–$0.05, used
 #     0–3 supervisor hops, and ≤ 21 k tokens (including cache reads).
 # Each threshold sits comfortably above the observed normal envelope so a trip

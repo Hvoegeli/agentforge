@@ -28,10 +28,11 @@ class Thresholds:
     amplification_k: float
 
 
-# Hardcoded defaults that mirror evals/thresholds.yaml (grounded in
-# clinical-copilot/COST_LATENCY_REPORT.md + a live local C1 run — see that file
-# for the derivation). max_total_tokens counts input+output only (cache-read
-# tokens are excluded by the C5 checker).
+# Hardcoded defaults that mirror evals/thresholds.yaml (grounded in the target's
+# own COST_LATENCY_REPORT.md — `clinical-copilot/COST_LATENCY_REPORT.md` in the
+# Co-Pilot repo at github.com/Hvoegeli/openemr, *not* a file in this repo — plus
+# a live local C1 run; see that file for the derivation). max_total_tokens
+# counts input+output only (cache-read tokens are excluded by the C5 checker).
 _DEFAULTS = Thresholds(
     max_total_tokens=80_000,
     max_cost_usd=0.50,
