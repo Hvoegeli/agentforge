@@ -2,13 +2,34 @@
 
 > An autonomous multi-agent adversarial-evaluation platform that continuously red-teams an LLM-assisted clinical chatbot.
 
-**Status:** MVP (2026-05-12) — platform built, 201 tests green, 6 seeded findings, all 9 attack categories exercised live against the deployed target (9/9 on the dashboard). Final: 2026-05-15.
+## AgentForge is a standalone repository. Read this first.
 
-**Target system (the "victim"):** the [OpenEMR Clinical Co-Pilot](https://github.com/Hvoegeli/openemr) (Weeks 1–2 build), running on Hetzner and exposed over a Cloudflare quick tunnel. AgentForge reaches the target over HTTP — exactly like an external attacker would — and never shares a process, a database, or a CI pipeline with it.
+**This repo ([`Hvoegeli/agentforge`](https://github.com/Hvoegeli/agentforge)) is the platform.** It is **not** part of OpenEMR and **not** part of the Clinical Co-Pilot it attacks. The Co-Pilot is a different repo entirely: [`Hvoegeli/openemr`](https://github.com/Hvoegeli/openemr). They have never shared a tree, a process, a database, or a CI pipeline.
 
-- **Deployed target (Co-Pilot):** `https://hansen-rat-ages-rim.trycloudflare.com/` — *Cloudflare quick tunnel; the subdomain rotates on `cloudflared` restart, so the current URL is submitted with each checkpoint.* Pinned baseline SHA for the regression suite: `74aa5be4` (openemr `master`); the live deployment currently runs `1055abd71` (the pen-test fixes — see [`THREAT_MODEL.md`](THREAT_MODEL.md) § *Fix status*).
-- **Deployed AgentForge dashboard (this platform's own URL, separate from the Co-Pilot's):** `https://asin-vessels-differ-drunk.trycloudflare.com/` — the rendered observability dashboard, served from the Hetzner box behind its own Cloudflare quick tunnel (`systemd`: `agentforge-dashboard-http.service` serves `/opt/agentforge-dashboard/` on `:8090`, `agentforge-dashboard-tunnel.service` runs `cloudflared`). `RESILIENCE.md` is served at `/RESILIENCE.md`. *Quick-tunnel subdomain rotates if `cloudflared` restarts — the current URL is submitted with each checkpoint; run `journalctl -u agentforge-dashboard-tunnel -n 50 | grep trycloudflare` on the box for the live one.* Committed snapshot: [`dashboard.html`](dashboard.html). Companion hand-off doc [`RESILIENCE.md`](RESILIENCE.md) — per-category pass/fail + every open finding as a reproducible work list to give the Co-Pilot's maintainer; regenerate with `agentforge resilience-report`.
-- **Companion docs:** [`THREAT_MODEL.md`](THREAT_MODEL.md) (attack surface), [`ARCHITECTURE.md`](ARCHITECTURE.md) (multi-agent design + diagram), [`USERS.md`](USERS.md) (who uses it / why automation), [`evals/success_criteria.md`](evals/success_criteria.md) (the invariants), [`COST_LATENCY_REPORT.md`](COST_LATENCY_REPORT.md) (cost model + 100/1K/10K/100K projection), [`presearch.md`](presearch.md) (constraints + decisions).
+```
+┌────────────────────────────────┐                  ┌──────────────────────────────────────────┐
+│ AgentForge — the platform      │                  │ Clinical Co-Pilot — the TARGET           │
+│ github.com/Hvoegeli/agentforge │ ── HTTPS ──▶     │ github.com/Hvoegeli/openemr              │
+│ this repo                      │   only           │ a different repo                         │
+│                                │                  │                                          │
+│ Deployed dashboard URL ↓       │                  │ Deployed target URL ↓                    │
+│ asin-vessels-differ-drunk.     │                  │ hansen-rat-ages-rim.                     │
+│   trycloudflare.com            │                  │   trycloudflare.com                      │
+│ (systemd: agentforge-dashboard-*) │               │ (systemd: clinical-copilot-*, port 7300) │
+└────────────────────────────────┘                  └──────────────────────────────────────────┘
+```
+
+**Different repos, different deployments, different Cloudflare tunnels, different `systemd` services on the box.** AgentForge reaches the Co-Pilot **only** through the Target Adapter ([`src/agentforge/target/adapter.py`](src/agentforge/target/adapter.py)) — an `httpx.Client` against an allowlisted external URL, rate-capped at 20/min, with transcripts PHI-redacted before storage. Every `AttackAttempt` in the SQLite store records `target_base_url` and `target_sha` so the cross-process round-trip is provable from the data.
+
+> **For a runnable proof in three minutes — including `curl` to the target's `/healthz`, a live `agentforge run` showing outbound HTTPS, and a regression-suite invocation at the pinned target SHA — see [`MVP_EVIDENCE.md`](MVP_EVIDENCE.md).** That is the single grader-facing verification pack.
+
+---
+
+**Status:** MVP (2026-05-12) — platform built, 206 tests green, 6 seeded findings, all 9 attack categories exercised live against the deployed target (9/9 on the dashboard). Final: 2026-05-15.
+
+- **Deployed target (Co-Pilot — the system being attacked):** `https://hansen-rat-ages-rim.trycloudflare.com/` — Cloudflare quick tunnel; the subdomain rotates on `cloudflared` restart, so the current URL is submitted with each checkpoint. Pinned baseline SHA for the regression suite: `74aa5be4` (openemr `master`); the live deployment currently runs `1055abd71` (the pen-test fixes — see [`THREAT_MODEL.md`](THREAT_MODEL.md) § *Fix status*).
+- **Deployed AgentForge dashboard (this platform's own URL, *separate* from the Co-Pilot's):** `https://asin-vessels-differ-drunk.trycloudflare.com/` — the rendered observability dashboard, served from the Hetzner box behind its **own** Cloudflare quick tunnel (`systemd`: `agentforge-dashboard-http.service` serves `/opt/agentforge-dashboard/` on `:8090`, `agentforge-dashboard-tunnel.service` runs `cloudflared`). `RESILIENCE.md` is served at `/RESILIENCE.md`. Quick-tunnel subdomain rotates if `cloudflared` restarts — the current URL is submitted with each checkpoint; run `journalctl -u agentforge-dashboard-tunnel -n 50 | grep trycloudflare` on the box for the live one. Committed snapshot: [`dashboard.html`](dashboard.html). Companion hand-off doc [`RESILIENCE.md`](RESILIENCE.md) — per-category pass/fail + every open finding as a reproducible work list to give the Co-Pilot's maintainer; regenerate with `agentforge resilience-report`.
+- **Companion docs:** [`MVP_EVIDENCE.md`](MVP_EVIDENCE.md) (the 3-minute verification pack), [`THREAT_MODEL.md`](THREAT_MODEL.md) (attack surface), [`ARCHITECTURE.md`](ARCHITECTURE.md) (multi-agent design + diagram), [`USERS.md`](USERS.md) (who uses it / why automation), [`evals/success_criteria.md`](evals/success_criteria.md) (the invariants), [`COST_LATENCY_REPORT.md`](COST_LATENCY_REPORT.md) (cost model + 100/1K/10K/100K projection), [`presearch.md`](presearch.md) (constraints + decisions).
 
 ## What it does
 
