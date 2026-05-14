@@ -418,8 +418,12 @@
     <div class="header-left">
       <h1>AgentForge — Adversarial Eval Dashboard</h1>
       <div class="subtitle">
-        Continuous red-team observability for the OpenEMR Clinical Co-Pilot &nbsp;·&nbsp;
-        which attack categories are covered, where the target is holding, what's still open.
+        Continuous red-team observability over the OpenEMR Clinical Co-Pilot, from outside.
+        AgentForge is a <strong>standalone platform</strong>
+        (<a href="https://github.com/Hvoegeli/agentforge" style="color: var(--accent);">github.com/Hvoegeli/agentforge</a>);
+        the Co-Pilot it attacks is a <strong>different repo</strong>
+        (<a href="https://github.com/Hvoegeli/openemr" style="color: var(--accent);">github.com/Hvoegeli/openemr</a>).
+        AgentForge reaches the target only over HTTPS.
         <br />Static snapshot rendered {{ rendered_at }} — regenerate with <code>agentforge dashboard</code>.
       </div>
     </div>
@@ -435,6 +439,48 @@
       </button>
     </form>
   </header>
+
+  <!-- ====================================================================
+       CROSS-PROCESS BOUNDARY BANNER
+       Makes the two-deployment, two-repo split visible at the top of the page.
+       The PRD requires the platform to test a deployed target — this banner
+       names the two URLs and the one code path (TargetAdapter) that connects
+       them, so a reviewer can verify the cross-process round-trip at a glance.
+       ==================================================================== -->
+  <div class="card" style="border-left: 4px solid var(--accent); margin-bottom: 18px;">
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; font-size: 0.85rem;">
+      <div style="flex: 1 1 320px;">
+        <div style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem;">Attacking — the target</div>
+        <div style="font-family: var(--font-mono, monospace); font-size: 0.92rem; color: var(--text);">
+          https://hansen-rat-ages-rim.trycloudflare.com
+        </div>
+        <div style="color: var(--text-muted);">
+          the deployed Clinical Co-Pilot
+          (<a href="https://github.com/Hvoegeli/openemr" style="color: var(--accent);">Hvoegeli/openemr</a>,
+          a <em>different</em> repo, a <em>different</em> process, reached over HTTPS only)
+        </div>
+      </div>
+      <div style="flex: 1 1 320px;">
+        <div style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.72rem;">This dashboard — AgentForge</div>
+        <div style="font-family: var(--font-mono, monospace); font-size: 0.92rem; color: var(--text);">
+          https://asin-vessels-differ-drunk.trycloudflare.com
+        </div>
+        <div style="color: var(--text-muted);">
+          AgentForge's own URL
+          (<a href="https://github.com/Hvoegeli/agentforge" style="color: var(--accent);">Hvoegeli/agentforge</a>) —
+          separate systemd service, separate Cloudflare tunnel, separate code path
+        </div>
+      </div>
+    </div>
+    <div style="margin-top: 10px; font-size: 0.82rem; color: var(--text-muted);">
+      Every <code>POST&nbsp;/chat</code>, <code>GET&nbsp;/api/traces</code>, <code>POST&nbsp;/api/upload</code>
+      row in <strong>§6 — Per-Agent Activity Timeline</strong> below is an HTTP request crossing this boundary.
+      The only code path that touches the target is the Target Adapter
+      (<code>src/agentforge/target/adapter.py</code>) — an allowlist-enforced <code>httpx.Client</code>;
+      see <code><a href="https://github.com/Hvoegeli/agentforge/blob/main/MVP_EVIDENCE.md" style="color: var(--accent);">MVP_EVIDENCE.md</a></code>
+      for runnable proof in three minutes.
+    </div>
+  </div>
 
   <!-- ====================================================================
        KPI STRIP — at-a-glance summary
