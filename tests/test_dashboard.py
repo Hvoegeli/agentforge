@@ -219,13 +219,30 @@ class TestRenderDashboard:
         # The directive is truncated to 80 chars in the timeline table; check a prefix
         assert _DIRECTIVE[:60] in html
 
-    def test_contains_total_cost(self) -> None:
+    def test_contains_target_inference_cost(self) -> None:
+        """The Co-Pilot's own inference cost (attempt.cost_usd) is the *target's*
+        bill — recorded for visibility, AgentForge does not pay. It renders in
+        the §5 secondary visibility line, NOT the main stat row."""
         with Database(":memory:") as db:
             _populate_db(db)
             html = render_dashboard(db)
-            total = db.total_cost()  # attempt cost_usd values (0.0042 + 0.0018 = 0.0060)
-        # The template formats cost as "%.4f"; check the significant digits appear
-        assert "0.0060" in html or str(round(total, 4)) in html
+            target_cost = db.total_cost()  # 0.0042 + 0.0018 = 0.0060
+        assert "0.0060" in html or str(round(target_cost, 4)) in html
+        assert "Target-side inference cost" in html
+
+    def test_contains_total_agent_cost(self) -> None:
+        """AgentForge's own LLM spend (runs.total_cost_usd) is the budget number —
+        renders as the main §5 KPI ('AgentForge LLM spend (all runs)'), drives
+        avg/run + the scale projections."""
+        with Database(":memory:") as db:
+            _populate_db(db)
+            html = render_dashboard(db)
+            agent_cost = db.total_agent_cost()
+        # Whatever the populated runs total to (could be 0.0 if fixtures don't set
+        # runs.total_cost_usd) — the LABEL must be there and the rendered number
+        # must match the agent total.
+        assert "AgentForge LLM spend" in html
+        assert f"${agent_cost:.4f}" in html
 
     def test_contains_stop_button(self) -> None:
         with Database(":memory:") as db:

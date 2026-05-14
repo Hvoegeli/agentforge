@@ -347,7 +347,13 @@ def _gather(db: Database) -> dict[str, Any]:
     findings_status: dict[str, int] = db.findings_status_summary()
     verdict_rates: dict[str, dict[str, int]] = db.verdict_rates_by_category()
     findings_detail: list[dict[str, Any]] = db.findings_detail()
-    total_cost: float = db.total_cost()
+    # `total_cost` here is AGENT cost (what AgentForge actually pays — Red Team
+    # mutation + LLM-Judge + Documentation narrative). The Co-Pilot's own
+    # inference bill (`target_inference_cost`) is recorded separately for
+    # visibility but is not AgentForge's spend — averages + projections use the
+    # agent number because that's the one the platform's budget controls.
+    total_cost: float = db.total_agent_cost()
+    target_inference_cost: float = db.total_cost()
     recent_runs: list[dict[str, Any]] = db.recent_runs(limit=50)
 
     sha_stats = _build_sha_stats(recent_runs)
@@ -380,7 +386,8 @@ def _gather(db: Database) -> dict[str, Any]:
         "findings_status": findings_status,
         "findings_detail": findings_detail,
         # §5 cost
-        "total_cost": total_cost,
+        "total_cost": total_cost,  # AgentForge's spend (the budget number)
+        "target_inference_cost": target_inference_cost,  # the Co-Pilot's bill — visibility only
         "recent_runs": recent_runs,
         "avg_cost_per_run": avg_cost_per_run,
         "proj_100": proj_100,

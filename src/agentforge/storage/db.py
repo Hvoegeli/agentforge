@@ -385,8 +385,21 @@ class Database:
         return out
 
     def total_cost(self) -> float:
+        """Target-side inference cost: sum of ``attack_attempts.cost_usd`` (the
+        Co-Pilot's own LLM bill, recorded for visibility). AgentForge does *not*
+        pay this — see :meth:`total_agent_cost` for the platform's actual spend."""
         row = self._conn.execute(
             "SELECT COALESCE(SUM(cost_usd), 0.0) AS c FROM attack_attempts"
+        ).fetchone()
+        return float(row["c"])
+
+    def total_agent_cost(self) -> float:
+        """Agent-side LLM cost: sum of ``runs.total_cost_usd`` (what AgentForge
+        actually pays via OpenRouter — Red Team mutation + LLM-Judge escalations +
+        Documentation narrative). This is the number cost projections / budgets
+        operate on; the target's bill is the Co-Pilot's, not ours."""
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(total_cost_usd), 0.0) AS c FROM runs"
         ).fetchone()
         return float(row["c"])
 

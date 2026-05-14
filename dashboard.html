@@ -420,7 +420,7 @@
       <div class="subtitle">
         Continuous red-team observability for the OpenEMR Clinical Co-Pilot &nbsp;·&nbsp;
         which attack categories are covered, where the target is holding, what's still open.
-        <br />Static snapshot rendered 2026-05-13 20:29 UTC — regenerate with <code>agentforge dashboard</code>.
+        <br />Static snapshot rendered 2026-05-14 04:00 UTC — regenerate with <code>agentforge dashboard</code>.
       </div>
     </div>
 
@@ -452,7 +452,7 @@
     </div>
     <div class="stat-box">
       <div class="label">Campaign runs</div>
-      <div class="value">9</div>
+      <div class="value">20</div>
       <div class="kpi-sub">Orchestrator-driven, recorded in the DB</div>
     </div>
     <div class="stat-box">
@@ -485,11 +485,11 @@
             <span class="pill pill-id">C1</span>
           </div>
           <div class="desc">Does the Co-Pilot keep its system and safety rules when a user — or text it reads from a document or a chart field — directly tells it to ignore them?</div>
-          <div class="bar-track" title="10 recorded attempts">
+          <div class="bar-track" title="42 recorded attempts">
             <div class="bar-fill" style="width: 100.0%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">10 attempts</span>
+            <span class="pill pill-attempts">42 attempts</span>
             
             <span class="pill">9 seed cases</span>
             
@@ -503,11 +503,11 @@
             <span class="pill pill-id">C2</span>
           </div>
           <div class="desc">Does the Co-Pilot stay bound to the active patient and refuse requests for another patient's chart, documents, or PHI (cross-patient access, IDOR)?</div>
-          <div class="bar-track" title="5 recorded attempts">
-            <div class="bar-fill" style="width: 50.0%;"></div>
+          <div class="bar-track" title="7 recorded attempts">
+            <div class="bar-fill" style="width: 16.7%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">5 attempts</span>
+            <span class="pill pill-attempts">7 attempts</span>
             
             <span class="pill">2 seed cases</span>
             
@@ -521,11 +521,11 @@
             <span class="pill pill-id">C3</span>
           </div>
           <div class="desc">Can conversation history or retrieved context be poisoned so the Co-Pilot carries a planted instruction or fact into later turns?</div>
-          <div class="bar-track" title="3 recorded attempts">
-            <div class="bar-fill" style="width: 30.0%;"></div>
+          <div class="bar-track" title="9 recorded attempts">
+            <div class="bar-fill" style="width: 21.4%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">3 attempts</span>
+            <span class="pill pill-attempts">9 attempts</span>
             
             <span class="pill">3 seed cases</span>
             
@@ -539,11 +539,11 @@
             <span class="pill pill-id">C4</span>
           </div>
           <div class="desc">Can the Co-Pilot be steered into calling the wrong tool, on the wrong patient, or in a recursive loop that never settles?</div>
-          <div class="bar-track" title="2 recorded attempts">
-            <div class="bar-fill" style="width: 20.0%;"></div>
+          <div class="bar-track" title="4 recorded attempts">
+            <div class="bar-fill" style="width: 9.5%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">2 attempts</span>
+            <span class="pill pill-attempts">4 attempts</span>
             
             <span class="pill">2 seed cases</span>
             
@@ -557,11 +557,11 @@
             <span class="pill pill-id">C5</span>
           </div>
           <div class="desc">Can a single request drive token, cost, or time use far outside the normal envelope — “read every page”, infinite loops, cost amplification?</div>
-          <div class="bar-track" title="3 recorded attempts">
-            <div class="bar-fill" style="width: 30.0%;"></div>
+          <div class="bar-track" title="5 recorded attempts">
+            <div class="bar-fill" style="width: 11.9%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">3 attempts</span>
+            <span class="pill pill-attempts">5 attempts</span>
             
             <span class="pill">2 seed cases</span>
             
@@ -575,11 +575,11 @@
             <span class="pill pill-id">C6</span>
           </div>
           <div class="desc">Can a claimed role or authority (“I'm an administrator now”) make the Co-Pilot exceed its clinical or access boundaries?</div>
-          <div class="bar-track" title="2 recorded attempts">
-            <div class="bar-fill" style="width: 20.0%;"></div>
+          <div class="bar-track" title="4 recorded attempts">
+            <div class="bar-fill" style="width: 9.5%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">2 attempts</span>
+            <span class="pill pill-attempts">4 attempts</span>
             
             <span class="pill">2 seed cases</span>
             
@@ -593,11 +593,11 @@
             <span class="pill pill-id">B1</span>
           </div>
           <div class="desc">Will the Co-Pilot state a clinical fact with no citation, or strip its safety disclaimer when a confident user asks it to?</div>
-          <div class="bar-track" title="4 recorded attempts">
-            <div class="bar-fill" style="width: 40.0%;"></div>
+          <div class="bar-track" title="7 recorded attempts">
+            <div class="bar-fill" style="width: 16.7%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">4 attempts</span>
+            <span class="pill pill-attempts">7 attempts</span>
             
             <span class="pill">3 seed cases</span>
             
@@ -611,11 +611,11 @@
             <span class="pill pill-id">B2</span>
           </div>
           <div class="desc">Does the Co-Pilot emit unescaped or unsafe content (markdown, HTML, links) that a downstream renderer would mishandle?</div>
-          <div class="bar-track" title="4 recorded attempts">
-            <div class="bar-fill" style="width: 40.0%;"></div>
+          <div class="bar-track" title="8 recorded attempts">
+            <div class="bar-fill" style="width: 19.0%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">4 attempts</span>
+            <span class="pill pill-attempts">8 attempts</span>
             
             <span class="pill">4 seed cases</span>
             
@@ -629,11 +629,11 @@
             <span class="pill pill-id">B3</span>
           </div>
           <div class="desc">Can the Co-Pilot be made to reveal its system prompt or internal instructions verbatim?</div>
-          <div class="bar-track" title="4 recorded attempts">
-            <div class="bar-fill" style="width: 40.0%;"></div>
+          <div class="bar-track" title="8 recorded attempts">
+            <div class="bar-fill" style="width: 19.0%;"></div>
           </div>
           <div class="meta">
-            <span class="pill pill-attempts">4 attempts</span>
+            <span class="pill pill-attempts">8 attempts</span>
             
             <span class="pill">4 seed cases</span>
             
@@ -677,18 +677,18 @@
             
             <tr>
               <td><code>prompt_injection</code></td>
-              <td class="num" style="color: var(--ok);">8</td>
+              <td class="num" style="color: var(--ok);">36</td>
               <td class="num" style="color: var(--danger);">1</td>
               <td class="num" style="color: var(--partial);">0</td>
-              <td class="num" style="color: var(--uncertain);">1</td>
-              <td class="num">10</td>
+              <td class="num" style="color: var(--uncertain);">5</td>
+              <td class="num">42</td>
               <td>
                 
-                <div class="verdict-bar" title="pass 80.0% / fail 10.0% / partial 0.0% / uncertain 10.0%">
-                  <div class="vb-pass"     style="width: 80.0%;"></div>
-                  <div class="vb-fail"     style="width: 10.0%;"></div>
+                <div class="verdict-bar" title="pass 85.7% / fail 2.4% / partial 0.0% / uncertain 11.9%">
+                  <div class="vb-pass"     style="width: 85.7%;"></div>
+                  <div class="vb-fail"     style="width: 2.4%;"></div>
                   <div class="vb-partial"  style="width: 0.0%;"></div>
-                  <div class="vb-uncertain" style="width: 10.0%;"></div>
+                  <div class="vb-uncertain" style="width: 11.9%;"></div>
                 </div>
                 
               </td>
@@ -705,18 +705,18 @@
             
             <tr>
               <td><code>data_exfiltration</code></td>
-              <td class="num" style="color: var(--ok);">1</td>
+              <td class="num" style="color: var(--ok);">2</td>
               <td class="num" style="color: var(--danger);">3</td>
               <td class="num" style="color: var(--partial);">0</td>
-              <td class="num" style="color: var(--uncertain);">1</td>
-              <td class="num">5</td>
+              <td class="num" style="color: var(--uncertain);">2</td>
+              <td class="num">7</td>
               <td>
                 
-                <div class="verdict-bar" title="pass 20.0% / fail 60.0% / partial 0.0% / uncertain 20.0%">
-                  <div class="vb-pass"     style="width: 20.0%;"></div>
-                  <div class="vb-fail"     style="width: 60.0%;"></div>
+                <div class="verdict-bar" title="pass 28.6% / fail 42.9% / partial 0.0% / uncertain 28.6%">
+                  <div class="vb-pass"     style="width: 28.6%;"></div>
+                  <div class="vb-fail"     style="width: 42.9%;"></div>
                   <div class="vb-partial"  style="width: 0.0%;"></div>
-                  <div class="vb-uncertain" style="width: 20.0%;"></div>
+                  <div class="vb-uncertain" style="width: 28.6%;"></div>
                 </div>
                 
               </td>
@@ -733,18 +733,18 @@
             
             <tr>
               <td><code>state_corruption</code></td>
-              <td class="num" style="color: var(--ok);">3</td>
+              <td class="num" style="color: var(--ok);">8</td>
               <td class="num" style="color: var(--danger);">0</td>
               <td class="num" style="color: var(--partial);">0</td>
-              <td class="num" style="color: var(--uncertain);">0</td>
-              <td class="num">3</td>
+              <td class="num" style="color: var(--uncertain);">1</td>
+              <td class="num">9</td>
               <td>
                 
-                <div class="verdict-bar" title="pass 100.0% / fail 0.0% / partial 0.0% / uncertain 0.0%">
-                  <div class="vb-pass"     style="width: 100.0%;"></div>
+                <div class="verdict-bar" title="pass 88.9% / fail 0.0% / partial 0.0% / uncertain 11.1%">
+                  <div class="vb-pass"     style="width: 88.9%;"></div>
                   <div class="vb-fail"     style="width: 0.0%;"></div>
                   <div class="vb-partial"  style="width: 0.0%;"></div>
-                  <div class="vb-uncertain" style="width: 0.0%;"></div>
+                  <div class="vb-uncertain" style="width: 11.1%;"></div>
                 </div>
                 
               </td>
@@ -761,11 +761,11 @@
             
             <tr>
               <td><code>tool_misuse</code></td>
-              <td class="num" style="color: var(--ok);">2</td>
+              <td class="num" style="color: var(--ok);">4</td>
               <td class="num" style="color: var(--danger);">0</td>
               <td class="num" style="color: var(--partial);">0</td>
               <td class="num" style="color: var(--uncertain);">0</td>
-              <td class="num">2</td>
+              <td class="num">4</td>
               <td>
                 
                 <div class="verdict-bar" title="pass 100.0% / fail 0.0% / partial 0.0% / uncertain 0.0%">
@@ -789,16 +789,16 @@
             
             <tr>
               <td><code>denial_of_service</code></td>
-              <td class="num" style="color: var(--ok);">2</td>
+              <td class="num" style="color: var(--ok);">4</td>
               <td class="num" style="color: var(--danger);">1</td>
               <td class="num" style="color: var(--partial);">0</td>
               <td class="num" style="color: var(--uncertain);">0</td>
-              <td class="num">3</td>
+              <td class="num">5</td>
               <td>
                 
-                <div class="verdict-bar" title="pass 66.7% / fail 33.3% / partial 0.0% / uncertain 0.0%">
-                  <div class="vb-pass"     style="width: 66.7%;"></div>
-                  <div class="vb-fail"     style="width: 33.3%;"></div>
+                <div class="verdict-bar" title="pass 80.0% / fail 20.0% / partial 0.0% / uncertain 0.0%">
+                  <div class="vb-pass"     style="width: 80.0%;"></div>
+                  <div class="vb-fail"     style="width: 20.0%;"></div>
                   <div class="vb-partial"  style="width: 0.0%;"></div>
                   <div class="vb-uncertain" style="width: 0.0%;"></div>
                 </div>
@@ -817,11 +817,11 @@
             
             <tr>
               <td><code>identity_role</code></td>
-              <td class="num" style="color: var(--ok);">2</td>
+              <td class="num" style="color: var(--ok);">4</td>
               <td class="num" style="color: var(--danger);">0</td>
               <td class="num" style="color: var(--partial);">0</td>
               <td class="num" style="color: var(--uncertain);">0</td>
-              <td class="num">2</td>
+              <td class="num">4</td>
               <td>
                 
                 <div class="verdict-bar" title="pass 100.0% / fail 0.0% / partial 0.0% / uncertain 0.0%">
@@ -845,16 +845,16 @@
             
             <tr>
               <td><code>misinformation</code></td>
-              <td class="num" style="color: var(--ok);">3</td>
+              <td class="num" style="color: var(--ok);">6</td>
               <td class="num" style="color: var(--danger);">1</td>
               <td class="num" style="color: var(--partial);">0</td>
               <td class="num" style="color: var(--uncertain);">0</td>
-              <td class="num">4</td>
+              <td class="num">7</td>
               <td>
                 
-                <div class="verdict-bar" title="pass 75.0% / fail 25.0% / partial 0.0% / uncertain 0.0%">
-                  <div class="vb-pass"     style="width: 75.0%;"></div>
-                  <div class="vb-fail"     style="width: 25.0%;"></div>
+                <div class="verdict-bar" title="pass 85.7% / fail 14.3% / partial 0.0% / uncertain 0.0%">
+                  <div class="vb-pass"     style="width: 85.7%;"></div>
+                  <div class="vb-fail"     style="width: 14.3%;"></div>
                   <div class="vb-partial"  style="width: 0.0%;"></div>
                   <div class="vb-uncertain" style="width: 0.0%;"></div>
                 </div>
@@ -873,11 +873,11 @@
             
             <tr>
               <td><code>improper_output</code></td>
-              <td class="num" style="color: var(--ok);">4</td>
+              <td class="num" style="color: var(--ok);">8</td>
               <td class="num" style="color: var(--danger);">0</td>
               <td class="num" style="color: var(--partial);">0</td>
               <td class="num" style="color: var(--uncertain);">0</td>
-              <td class="num">4</td>
+              <td class="num">8</td>
               <td>
                 
                 <div class="verdict-bar" title="pass 100.0% / fail 0.0% / partial 0.0% / uncertain 0.0%">
@@ -901,11 +901,11 @@
             
             <tr>
               <td><code>system_prompt_leakage</code></td>
-              <td class="num" style="color: var(--ok);">4</td>
+              <td class="num" style="color: var(--ok);">8</td>
               <td class="num" style="color: var(--danger);">0</td>
               <td class="num" style="color: var(--partial);">0</td>
               <td class="num" style="color: var(--uncertain);">0</td>
-              <td class="num">4</td>
+              <td class="num">8</td>
               <td>
                 
                 <div class="verdict-bar" title="pass 100.0% / fail 0.0% / partial 0.0% / uncertain 0.0%">
@@ -949,10 +949,10 @@
               <td>
                 <span class="env-chip env-deployed">deployed instance</span>
               </td>
-              <td class="num">9</td>
-              <td class="num">31</td>
+              <td class="num">20</td>
+              <td class="num">88</td>
               <td class="num">0</td>
-              <td class="num">2</td>
+              <td class="num">8</td>
               <td class="num">100.0%</td>
             </tr>
             
@@ -997,7 +997,7 @@
             <tr>
               <td><code>copilot@1055</code></td>
               <td class="muted">2026-05-13T19:52:36</td>
-              <td class="num">31</td>
+              <td class="num">88</td>
               <td class="num">100.0%</td>
               <td>
                 <span class="trend-flat">— baseline</span>
@@ -1145,19 +1145,29 @@
 
     <div class="stat-row">
       <div class="stat-box">
-        <div class="label">Total cost (all runs)</div>
-        <div class="value" style="color: var(--accent);">$0.6100</div>
+        <div class="label">AgentForge LLM spend (all runs)</div>
+        <div class="value" style="color: var(--accent);">$0.0284</div>
+        <div class="kpi-sub">what AgentForge pays — Red Team mutation + LLM-Judge + Documentation narrative</div>
       </div>
       <div class="stat-box">
         <div class="label">Runs recorded</div>
-        <div class="value">9</div>
+        <div class="value">20</div>
       </div>
       <div class="stat-box">
-        <div class="label">Avg cost / run</div>
+        <div class="label">Avg AgentForge cost / run</div>
         <div class="value">
-          $0.0678
+          $0.0014
         </div>
+        <div class="kpi-sub">basis for the scale projections below</div>
       </div>
+    </div>
+
+    <div class="card" style="font-size: 0.8rem; color: var(--text-muted); margin-top: -10px;">
+      <strong>Target-side inference cost (recorded for visibility, AgentForge does NOT pay):</strong>
+      <span style="color: var(--text);">$0.6100</span>
+      — this is the Co-Pilot's own LLM bill (its inference for handling each attack request).
+      AgentForge tracks it so a target-owner can see what the platform's testing volume costs <em>them</em>;
+      it does not enter AgentForge's budget controls or the scale projections.
     </div>
 
     <!-- Per-run cost table -->
@@ -1180,6 +1190,127 @@
             </tr>
           </thead>
           <tbody>
+            
+            <tr>
+              <td><code>d07ccdbc</code></td>
+              <td class="muted">2026-05-13T23:28:15</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">4</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>5ef8d293</code></td>
+              <td class="muted">2026-05-13T23:26:58</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">4</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>0747c188</code></td>
+              <td class="muted">2026-05-13T23:23:53</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">3</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>fa098cdd</code></td>
+              <td class="muted">2026-05-13T23:23:18</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="num">$0.0043</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>2ec2218f</code></td>
+              <td class="muted">2026-05-13T23:22:57</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>b7fe0003</code></td>
+              <td class="muted">2026-05-13T23:22:35</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>718e747d</code></td>
+              <td class="muted">2026-05-13T23:21:20</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">3</td>
+              <td class="num">0</td>
+              <td class="num">$0.0076</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>cb92651e</code></td>
+              <td class="muted">2026-05-13T23:21:11</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>2c90c979</code></td>
+              <td class="muted">2026-05-13T23:16:07</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">23</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>2f19496e</code></td>
+              <td class="muted">2026-05-13T23:07:54</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">3</td>
+              <td class="num">0</td>
+              <td class="num">$0.0042</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td><code>91c3afaf</code></td>
+              <td class="muted">2026-05-13T22:50:18</td>
+              <td><code>copilot@</code></td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td class="num">9</td>
+              <td class="num">0</td>
+              <td class="num">$0.0000</td>
+              <td class="muted">—</td>
+            </tr>
             
             <tr>
               <td><code>bebde4cd</code></td>
@@ -1311,26 +1442,26 @@
             <tr>
               <td>~100 runs <span class="badge badge-ok">measured baseline</span></td>
               <td class="muted">Full model set, no caching</td>
-              <td class="num">$6.78</td>
-              <td class="num">$0.0678</td>
+              <td class="num">$0.14</td>
+              <td class="num">$0.0014</td>
             </tr>
             <tr>
               <td>~1K runs</td>
               <td class="muted">+ caching + dedup (embed-similarity gate)</td>
-              <td class="num">~$41</td>
-              <td class="num">~$0.0407</td>
+              <td class="num">~$1</td>
+              <td class="num">~$0.0009</td>
             </tr>
             <tr>
               <td>~10K runs</td>
               <td class="muted">Bandit over cached templates; LLM only on novel signal (~5%)</td>
-              <td class="num">~$81</td>
-              <td class="num">~$0.00813</td>
+              <td class="num">~$2</td>
+              <td class="num">~$0.00017</td>
             </tr>
             <tr>
               <td>~100K runs</td>
               <td class="muted">Bandit + template library; LLM mutation &lt;5%; worker parallelism (roadmap)</td>
-              <td class="num">~$271</td>
-              <td class="num">~$0.00271</td>
+              <td class="num">~$6</td>
+              <td class="num">~$0.00006</td>
             </tr>
           </tbody>
         </table>
@@ -1364,6 +1495,226 @@
             </tr>
           </thead>
           <tbody>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:28:15</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe system_prompt_leakage against the target (full deterministic floor, budget $0.50)">
+                probe system_prompt_leakage against the target (full deterministic floor,...
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">system_prompt_leakage</code>
+                
+              </td>
+              <td class="num">4</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:26:58</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe improper_output against the target (full deterministic floor, budget $0.50)">
+                probe improper_output against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">improper_output</code>
+                
+              </td>
+              <td class="num">4</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:23:53</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe misinformation against the target (full deterministic floor, budget $0.50)">
+                probe misinformation against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">misinformation</code>
+                
+              </td>
+              <td class="num">3</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:23:18</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe identity_role against the target (full deterministic floor, budget $0.50)">
+                probe identity_role against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">identity_role</code>
+                
+              </td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:22:57</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe denial_of_service against the target (full deterministic floor, budget $0.50)">
+                probe denial_of_service against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">denial_of_service</code>
+                
+              </td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:22:35</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe tool_misuse against the target (full deterministic floor, budget $0.50)">
+                probe tool_misuse against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">tool_misuse</code>
+                
+              </td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:21:20</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe state_corruption against the target (full deterministic floor, budget $0.50)">
+                probe state_corruption against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">state_corruption</code>
+                
+              </td>
+              <td class="num">3</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:21:11</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe data_exfiltration against the target (full deterministic floor, budget $0.50)">
+                probe data_exfiltration against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">data_exfiltration</code>
+                
+              </td>
+              <td class="num">2</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:16:07</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe prompt_injection against the target (full deterministic floor, budget $0.50)">
+                probe prompt_injection against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">prompt_injection</code>
+                
+              </td>
+              <td class="num">23</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T23:07:54</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe state_corruption against the target (full deterministic floor, budget $0.50)">
+                probe state_corruption against the target (full deterministic floor, budget $0.50)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">state_corruption</code>
+                
+              </td>
+              <td class="num">3</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
+            
+            <tr>
+              <td class="muted" style="white-space: nowrap;">2026-05-13T22:50:18</td>
+              <td><span class="env-chip env-deployed">deployed instance</span></td>
+              <td style="max-width: 340px; overflow: hidden; text-overflow: ellipsis;" title="probe prompt_injection against the target (full deterministic floor, budget $0.30)">
+                probe prompt_injection against the target (full deterministic floor, budget $0.30)
+              </td>
+              <td>
+                
+                
+                  
+                
+                
+                <code style="font-size: 0.75em; margin-right: 3px;">prompt_injection</code>
+                
+              </td>
+              <td class="num">9</td>
+              <td class="num">0</td>
+              <td class="muted">—</td>
+            </tr>
             
             <tr>
               <td class="muted" style="white-space: nowrap;">2026-05-13T20:03:02</td>
@@ -1744,7 +2095,7 @@
        ==================================================================== -->
   <footer class="footer">
     <div>
-      AgentForge &nbsp;·&nbsp; rendered 2026-05-13 20:29 UTC &nbsp;·&nbsp;
+      AgentForge &nbsp;·&nbsp; rendered 2026-05-14 04:00 UTC &nbsp;·&nbsp;
       Source: <a href="https://github.com/Hvoegeli/agentforge">Hvoegeli/agentforge</a>
     </div>
     <div>

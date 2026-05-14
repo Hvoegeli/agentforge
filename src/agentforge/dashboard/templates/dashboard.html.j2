@@ -737,19 +737,29 @@
 
     <div class="stat-row">
       <div class="stat-box">
-        <div class="label">Total cost (all runs)</div>
+        <div class="label">AgentForge LLM spend (all runs)</div>
         <div class="value" style="color: var(--accent);">${{ "%.4f"|format(total_cost) }}</div>
+        <div class="kpi-sub">what AgentForge pays — Red Team mutation + LLM-Judge + Documentation narrative</div>
       </div>
       <div class="stat-box">
         <div class="label">Runs recorded</div>
         <div class="value">{{ recent_runs | length }}</div>
       </div>
       <div class="stat-box">
-        <div class="label">Avg cost / run</div>
+        <div class="label">Avg AgentForge cost / run</div>
         <div class="value">
           ${{ "%.4f"|format(avg_cost_per_run) }}
         </div>
+        <div class="kpi-sub">basis for the scale projections below</div>
       </div>
+    </div>
+
+    <div class="card" style="font-size: 0.8rem; color: var(--text-muted); margin-top: -10px;">
+      <strong>Target-side inference cost (recorded for visibility, AgentForge does NOT pay):</strong>
+      <span style="color: var(--text);">${{ "%.4f"|format(target_inference_cost) }}</span>
+      — this is the Co-Pilot's own LLM bill (its inference for handling each attack request).
+      AgentForge tracks it so a target-owner can see what the platform's testing volume costs <em>them</em>;
+      it does not enter AgentForge's budget controls or the scale projections.
     </div>
 
     <!-- Per-run cost table -->

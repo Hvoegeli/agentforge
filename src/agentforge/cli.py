@@ -133,6 +133,7 @@ def run(
     budget: float = typer.Option(0.50, "--budget", help="Agent-side LLM cost ceiling for the run (USD)."),
     single_turn_only: bool = typer.Option(False, "--single-turn-only", help="Skip multi-turn seeds."),
     mutate: bool = typer.Option(False, "--mutate", help="Mutate near-misses (deterministic mutators)."),
+    mutate_with_llm: bool = typer.Option(False, "--mutate-with-llm", help="Also invoke the LLM mutator (Role.MUTATION → Qwen3-32B via OpenRouter) on near-misses. Implies --mutate."),
     external: bool = typer.Option(False, "--external", help="Also run the curated public-dataset attack corpus (attacks/external.py)."),
     extra_sub: list[str] = typer.Option(None, "--extra-sub", help="Seed-template substitution, key=value (repeatable) — e.g. --extra-sub other_patient_name=Hale."),  # noqa: B008
     db_path: str | None = typer.Option(None, "--db", help="SQLite findings DB (default from settings)."),
@@ -170,12 +171,16 @@ def run(
                     console.print(f"[dim]session panel: {len(panel)} patient(s)[/dim]")
 
         orch = Orchestrator()
+        # --mutate-with-llm implies --mutate (LLM mutation needs the near-miss
+        # detection that the deterministic mutators path runs).
+        effective_mutate = mutate or mutate_with_llm
         campaign = orch.pick_campaign(
             category=cat,
             cost_ceiling_usd=budget,
             max_attacks=max_attacks,
             include_multi_turn=not single_turn_only,
-            mutate_near_misses=mutate,
+            mutate_near_misses=effective_mutate,
+            mutate_with_llm=mutate_with_llm,
             include_external_attacks=external,
             extra_subs=subs,
             judge_context=judge_context,
