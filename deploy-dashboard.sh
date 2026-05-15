@@ -34,7 +34,10 @@
 #                            local exploratory runs, so they appear on the dashboard
 #                            tagged "local stack"); default wipes for a fresh snapshot
 #   AF_SKIP_REGRESSION     — set to 1 to skip the post-sweep regression-suite step
-#   AF_REGRESSION_N        — replays per in-suite case (default: 3)
+#   AF_REGRESSION_N        — replays per in-suite case (default: 10 — N=10 is the
+#                            canonical setting; we previously ran N=3 but the smaller
+#                            sample masked judge/transport flakiness on the B1
+#                            zero-citation invariant, which N=10 surfaces)
 #   AF_REGRESSION_OUT      — regression artifact path (default: evals/results/regression-<sha>.json)
 #   AF_DB / AF_OUT         — local scratch paths (the SQLite DB / the HTML out file)
 #   AF_REPORTS             — where the generated vuln reports go (default: ./reports —
@@ -120,7 +123,7 @@ REGRESSION_OUT="${AF_REGRESSION_OUT:-evals/results/regression-${TARGET_SHA##*@}.
 if [[ -z "${AF_SKIP_REGRESSION:-}" ]]; then
   echo "==> regression suite vs $TARGET_URL (update-status) -> $REGRESSION_OUT"
   uv run agentforge regression-suite --db "$DB" --target-sha "$TARGET_SHA" \
-    --n "${AF_REGRESSION_N:-3}" --update-status --out "$REGRESSION_OUT" || true
+    --n "${AF_REGRESSION_N:-10}" --update-status --out "$REGRESSION_OUT" || true
 fi
 
 echo "==> rendering dashboard -> $OUT (+ RESILIENCE.md)"
